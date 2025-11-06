@@ -1,5 +1,6 @@
 import json
 import sys
+from docx import Document
 
 def load_document_data(filepath):
     """
@@ -21,11 +22,49 @@ def load_document_data(filepath):
         print(f"错误：JSON文件格式不正确 -> {filepath}")
         sys.exit(1)
 
-if __name__ == "__main__":
-    filepath = 'document_structure.json'
-    document_data = load_document_data(filepath)
+def create_document(data: dict):
+    """
+        根据传入的数据字典，创建一个Word文档对象。
 
-    print("成功读取JSON文件")
-    print("数据类型: ", type(document_data))
-    print("内容预览:")
-    print(json.dumps(document_data, indent=2, ensure_ascii=False))
+        Args:
+            data (dict): 从JSON文件加载的文档结构数据。
+
+        Returns:
+            Document: 一个构建好的python-docx的Document对象。
+    """
+    doc = Document()
+
+    if 'elements' not in data or not isinstance(data['elements'], list):
+        print("错误：JSON数据中缺少'elements'列表。")
+        return doc # 返回一个空文档
+
+    for element in data['elements']:
+        if element.get('type')=='paragraph':
+            text = element.get('text', '')
+            properties = element.get('properties', {})
+            if not isinstance(properties, dict):
+                properties = {}
+
+            style = properties.get("style", '')
+
+            if style=='Heading 1':
+                doc.add_paragraph(text, style='Heading 1')
+            else:
+                doc.add_paragraph(text)
+
+    return doc
+
+
+if __name__ == "__main__":
+    # 1. 加载数据
+    file_path = 'document_structure.json'
+    document_data = load_document_data(file_path)
+    print("✅ 成功读取JSON文件！")
+    # 2. 创建文档
+    document_object = create_document(document_data)
+    print("✅ 成功创建Word文档对象！")
+    # 3. 保存文档
+    output_filename = 'output.docx'
+    document_object.save(output_filename)
+    print(f"✅ 成功将文档保存为 '{output_filename}'！")
+    print("\n请打开项目文件夹查看生成的Word文档。")

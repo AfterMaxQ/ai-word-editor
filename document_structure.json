@@ -2,14 +2,14 @@
   "elements": [
     {
       "type": "paragraph",
-      "text": "This is a heading",
+      "text": "这是文档的标题",
       "properties": {
         "style": "Heading 1"
       }
     },
     {
       "type": "paragraph",
-      "text": "This is the first paragraph of the document."
+      "text": "这是第一段正文，没有特殊样式。"
     }
   ]
 }
