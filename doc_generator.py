@@ -1,6 +1,7 @@
 import json
 import sys
 from docx import Document
+from docx.shared import Pt, Cm
 
 def load_document_data(filepath):
     """
@@ -21,6 +22,37 @@ def load_document_data(filepath):
     except json.JSONDecodeError:
         print(f"错误：JSON文件格式不正确 -> {filepath}")
         sys.exit(1)
+
+
+def apply_paragraph_properties(paragraph, properties: dict):
+    """
+        将properties字典中定义的格式应用到段落对象上。
+
+        Args:
+            paragraph: python-docx的段落对象。
+            properties (dict): 包含格式定义的字典。
+    """
+    p_format = paragraph.paragraph_format
+
+    # 设置首行缩进
+    if 'first_line_indent' in properties:
+        p_format.first_line_indent = Cm(properties['first_line_indent'])
+
+    # --- 设置字体格式 (字体、字号等), 字体格式需要应用到段落内的Run上。---
+    if paragraph.runs:
+        font = paragraph.runs[0].font
+        # 设置字体名称
+        if 'font_name' in properties:
+            font.name = properties['font_name']
+            # 导入中文字体所需的包
+            from docx.oxml.ns import qn
+            # 设置中文字体 (东亚字体)
+            font.element.rPr.rFonts.set(qn('w:eastAsia'), properties['font_name'])
+
+        # 设置字体大小
+        if "font_size" in properties:
+            font.size = Pt(properties['font_size'])
+
 
 def create_document(data: dict):
     """
@@ -45,12 +77,13 @@ def create_document(data: dict):
             if not isinstance(properties, dict):
                 properties = {}
 
-            style = properties.get("style", '')
+            style = properties.get("style")
 
-            if style=='Heading 1':
-                doc.add_paragraph(text, style='Heading 1')
+            if style and 'Heading' in style:
+                p = doc.add_paragraph(text, style=style)
             else:
-                doc.add_paragraph(text)
+                p = doc.add_paragraph(text)
+                apply_paragraph_properties(p, properties)
 
     return doc
 

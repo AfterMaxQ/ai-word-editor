@@ -9,7 +9,16 @@
     },
     {
       "type": "paragraph",
-      "text": "这是第一段正文，没有特殊样式。"
+      "text": "这是第一段正文。我们希望它有首行缩进，并且字体是宋体，12号字。",
+      "properties": {
+        "font_name": "宋体",
+        "font_size": 12,
+        "first_line_indent": 0.74
+      }
+    },
+    {
+      "type": "paragraph",
+      "text": "这是第二段，没有特殊格式。"
     }
   ]
 }
