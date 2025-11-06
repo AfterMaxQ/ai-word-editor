@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE files
+.idea/
+
+# Generated output
+output/
+*.docx
