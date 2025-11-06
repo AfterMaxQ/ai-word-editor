@@ -4,7 +4,7 @@ from src import doc_generator
 from src.ai_parser import parse_natural_language_to_json
 
 # 定义输出文件名
-OUTPUT_DOCX_FILE = 'output_from_ai.docx'
+OUTPUT_DOCX_FILE = 'output/output_from_ai.docx'
 
 
 def main():
@@ -13,11 +13,7 @@ def main():
     """
     # 1. 定义用户的自然语言指令
     user_command = """
-    给我一个一级标题叫'项目周报'。
-    然后是一段正文，内容是'本周完成工作：'。
-    接下来是一个无序列表，包含三项：完成了列表功能的支持、设计了列表的JSON结构、编写了相关的测试用例。
-    再来一段正文，'下周计划：'。
-    最后是一个有序列表，包含三项：实现图片插入功能、搭建Streamlit UI原型、开始积累数据集。
+    创建一个标题叫'我的相册'。下面写一段话：'这是我最喜欢的一张照片：'。然后插入一张图片，路径是'assets/test_image.png'，宽度设置为12厘米。
     """
 
     # 2. 调用AI解析器

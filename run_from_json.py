@@ -5,7 +5,7 @@ import json
 
 # 定义输入和输出文件名
 INPUT_JSON_FILE = 'data/document_structure.json'
-OUTPUT_DOCX_FILE = 'output_from_json.docx'
+OUTPUT_DOCX_FILE = 'output/output_from_json.docx'
 
 
 def main():

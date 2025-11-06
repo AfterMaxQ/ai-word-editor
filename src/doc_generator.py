@@ -132,7 +132,34 @@ def add_list_from_data(doc, element: dict):
     for item_text in items:
         doc.add_paragraph(str(item_text), style=style)
 
+def add_image_from_data(doc, element: dict):
+    """
+        根据element字典中的数据，在文档中添加一张图片。
 
+        Args:
+            doc: The python-docx Document object.
+            element (dict): 包含图片数据的字典。
+    """
+    properties = element.get('properties', {})
+    path = properties.get('path')
+
+    if not path:
+        print("警告：图片元素缺少'path'属性，跳过此图片。")
+        return
+    # 从properties中获取宽度和高度
+    width_cm = properties.get('width')
+    height_cm = properties.get('height')
+    # 将Python的None或数值转换为docx的Cm单位对象
+    width = Cm(width_cm) if width_cm is not None else None
+    height = Cm(height_cm) if height_cm is not None else None
+
+    try:
+        doc.add_picture(path, width=width, height=height)
+    except FileNotFoundError:
+        print(f"警告：图片文件未找到 -> {path}，跳过此图片。")
+    except Exception as e:
+        # 捕获其他可能的错误，如文件格式不支持等
+        print(f"警告：插入图片时发生错误 -> {path} ({e})，跳过此图片。")
 
 def create_document(data: dict):
     """
@@ -172,6 +199,8 @@ def create_document(data: dict):
 
         elif element_type == "list":
             add_list_from_data(doc, element)
+        elif element_type == "image":
+            add_image_from_data(doc, element)
 
     return doc
 

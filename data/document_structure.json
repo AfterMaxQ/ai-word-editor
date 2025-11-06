@@ -2,34 +2,29 @@
   "elements": [
     {
       "type": "paragraph",
-      "text": "项目周报",
+      "text": "图文混排测试",
       "properties": { "style": "Heading 1" }
     },
     {
       "type": "paragraph",
-      "text": "本周完成工作："
+      "text": "下面是一张默认大小的图片："
     },
     {
-      "type": "list",
-      "properties": { "ordered": false },
-      "items": [
-        "完成了对列表功能的支持。",
-        "设计了列表的JSON结构。",
-        "编写了相关的测试用例。"
-      ]
+      "type": "image",
+      "properties": {
+        "path": "assets/test_image.png"
+      }
     },
     {
       "type": "paragraph",
-      "text": "下周计划："
+      "text": "下面是一张指定了宽度为10cm的图片（高度会自动缩放）："
     },
     {
-      "type": "list",
-      "properties": { "ordered": true },
-      "items": [
-        "实现图片插入功能。",
-        "搭建Streamlit UI原型。",
-        "开始积累数据集。"
-      ]
+      "type": "image",
+      "properties": {
+        "path": "assets/test_image.png",
+        "width": 10
+      }
     }
   ]
 }

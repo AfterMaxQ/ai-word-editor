@@ -26,7 +26,14 @@ Here is the full schema and examples for the content objects you can generate:
         - `ordered`: Boolean, `true` for a numbered list, `false` for a bulleted list.
     - `items`: A list of strings, where each string is a list item.
 
-3.  **Table Object**:
+3.  **Image Object**:
+     - `type`: "image"
+     - `properties`: A dictionary for image properties.
+         - `path`: String, the local file path to the image.
+         - `width`: (Optional) Number (in cm), the desired width of the image.
+         - `height`: (Optional) Number (in cm), the desired height of the image.
+
+4.  **Table Object**:
     - `type`: "table"
     - `properties`: A dictionary for table metadata.
         - `rows`: Number, total number of rows.
@@ -37,40 +44,28 @@ Here is the full schema and examples for the content objects you can generate:
 
 --- EXAMPLE ---
 
-User command: "给我一个一级标题叫'项目周报'。然后写一段'本周工作总结：'。接下来是一个无序列表，内容是完成列表功能、设计JSON、编写测试。最后是一个有序列表，写着下周计划：实现图片插入、搭建UI原型。"
+User command: "创建一个标题叫'我的相册'。下面写一段话：'这是我最喜欢的一张照片：'。然后插入一张图片，路径是'assets/photo.jpg'，宽度设置为12厘米。"
 
 Your output MUST be:
 {
   "elements": [
     {
       "type": "paragraph",
-      "text": "项目周报",
-      "properties": { "style": "Heading 1" }
+      "text": "我的相册",
+      "properties": {
+        "style": "Heading 1"
+      }
     },
     {
       "type": "paragraph",
-      "text": "本周工作总结："
+      "text": "这是我最喜欢的一张照片："
     },
     {
-      "type": "list",
-      "properties": { "ordered": false },
-      "items": [
-        "完成列表功能",
-        "设计JSON",
-        "编写测试"
-      ]
-    },
-    {
-      "type": "paragraph",
-      "text": "下周计划："
-    },
-    {
-      "type": "list",
-      "properties": { "ordered": true },
-      "items": [
-        "实现图片插入",
-        "搭建UI原型"
-      ]
+      "type": "image",
+      "properties": {
+        "path": "assets/photo.jpg",
+        "width": 12
+      }
     }
   ]
 }
