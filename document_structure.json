@@ -1,0 +1,15 @@
+{
+  "elements": [
+    {
+      "type": "paragraph",
+      "text": "This is a heading",
+      "properties": {
+        "style": "Heading 1"
+      }
+    },
+    {
+      "type": "paragraph",
+      "text": "This is the first paragraph of the document."
+    }
+  ]
+}
