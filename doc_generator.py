@@ -91,17 +91,26 @@ def create_document(data: dict):
 
     return doc
 
+def main():
+    """
+        脚本的主执行函数。
+        负责加载数据、创建文档并保存。
+    """
 
-if __name__ == "__main__":
     # 1. 加载数据
     file_path = 'document_structure.json'
     document_data = load_document_data(file_path)
     print("✅ 成功读取JSON文件！")
+
     # 2. 创建文档
     document_object = create_document(document_data)
     print("✅ 成功创建Word文档对象！")
+
     # 3. 保存文档
     output_filename = 'output.docx'
     document_object.save(output_filename)
     print(f"✅ 成功将文档保存为 '{output_filename}'！")
     print("\n请打开项目文件夹查看生成的Word文档。")
+
+if __name__ == "__main__":
+    main()
