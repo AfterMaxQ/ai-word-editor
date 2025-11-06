@@ -2,6 +2,7 @@ import json
 import sys
 from docx import Document
 from docx.shared import Pt, Cm
+from docx.oxml.ns import qn
 
 def load_document_data(filepath):
     """
@@ -52,6 +53,9 @@ def apply_paragraph_properties(paragraph, properties: dict):
         # 设置字体大小
         if "font_size" in properties:
             font.size = Pt(properties['font_size'])
+        #设置粗体
+        if 'bold' in properties:
+            font.bold = bool(properties['bold'])
 
 
 def create_document(data: dict):
