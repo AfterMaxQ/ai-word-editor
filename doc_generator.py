@@ -6,6 +6,8 @@ from docx.oxml.ns import qn
 from numpy.distutils.conv_template import header
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
+from ai_parser import parse_natural_language_to_json
+
 
 def load_document_data(filepath):
     """
@@ -151,24 +153,38 @@ def create_document(data: dict):
 
 def main():
     """
-        脚本的主执行函数。
-        负责加载数据、创建文档并保存。
+    脚本的主执行函数。
+    负责接收用户指令、调用AI解析、创建文档并保存。
+    """
+    # 1. 定义用户的自然语言指令
+    user_command = """
+    给我一个一级标题叫'月度销售报告'。
+    然后另起一段，内容是'以下是本月的销售数据汇总：'。
+    接下来，创建一个3行3列的表格，包含表头，列对齐方式是左、中、中。
+    表格内容是：
+    销售员, 销售额(万), 区域
+    张三, 120, 华北
+    李四, 98, 华东
+    最后，再来一段，内容是'报告结束。'，设置为加粗。
     """
 
-    # 1. 加载数据
-    file_path = 'document_structure.json'
-    document_data = load_document_data(file_path)
-    print("✅ 成功读取JSON文件！")
+    # 2. 调用AI解析器，将自然语言转换为结构化数据
+    document_data = parse_natural_language_to_json(user_command)
 
-    # 2. 创建文档
+    # 如果解析失败，则退出
+    if not document_data:
+        print("文档生成失败，因为AI解析步骤出错。")
+        return
+
+    # 3. 创建文档 (这部分完全复用我们之前的成果！)
+    print("\n📄 正在根据AI生成的数据结构创建Word文档...")
     document_object = create_document(document_data)
     print("✅ 成功创建Word文档对象！")
 
-    # 3. 保存文档
-    output_filename = 'output.docx'
+    # 4. 保存文档
+    output_filename = 'final_report.docx'
     document_object.save(output_filename)
     print(f"✅ 成功将文档保存为 '{output_filename}'！")
-    print("\n请打开项目文件夹查看生成的Word文档。")
 
 if __name__ == "__main__":
     main()
