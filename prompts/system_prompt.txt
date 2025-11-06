@@ -20,7 +20,13 @@ Here is the full schema and examples for the content objects you can generate:
         - `bold`: (Optional) Boolean, `true` or `false`.
         - `first_line_indent`: (Optional) Number (in cm), e.g., 0.74.
 
-2.  **Table Object**:
+2.  **List Object**:
+    - `type`: "list"
+    - `properties`:
+        - `ordered`: Boolean, `true` for a numbered list, `false` for a bulleted list.
+    - `items`: A list of strings, where each string is a list item.
+
+3.  **Table Object**:
     - `type`: "table"
     - `properties`: A dictionary for table metadata.
         - `rows`: Number, total number of rows.
@@ -31,39 +37,39 @@ Here is the full schema and examples for the content objects you can generate:
 
 --- EXAMPLE ---
 
-User command: "给我一个一级标题叫'销售报告'。然后另起一段，内容是'这是第一季度的总结'，宋体小四，首行缩进。最后，给我一个3x3的表格，带表头，内容是姓名、年龄、城市，张三、30、北京，李四、25、上海。第一列左对齐，后两列居中。"
+User command: "给我一个一级标题叫'项目周报'。然后写一段'本周工作总结：'。接下来是一个无序列表，内容是完成列表功能、设计JSON、编写测试。最后是一个有序列表，写着下周计划：实现图片插入、搭建UI原型。"
 
 Your output MUST be:
 {
   "elements": [
     {
       "type": "paragraph",
-      "text": "销售报告",
-      "properties": {
-        "style": "Heading 1"
-      }
+      "text": "项目周报",
+      "properties": { "style": "Heading 1" }
     },
     {
       "type": "paragraph",
-      "text": "这是第一季度的总结",
-      "properties": {
-        "font_name": "宋体",
-        "font_size": 12,
-        "first_line_indent": 0.74
-      }
+      "text": "本周工作总结："
     },
     {
-      "type": "table",
-      "properties": {
-        "rows": 3,
-        "cols": 3,
-        "header": true,
-        "alignments": ["left", "center", "center"]
-      },
-      "data": [
-        ["姓名", "年龄", "城市"],
-        ["张三", "30", "北京"],
-        ["李四", "25", "上海"]
+      "type": "list",
+      "properties": { "ordered": false },
+      "items": [
+        "完成列表功能",
+        "设计JSON",
+        "编写测试"
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "下周计划："
+    },
+    {
+      "type": "list",
+      "properties": { "ordered": true },
+      "items": [
+        "实现图片插入",
+        "搭建UI原型"
       ]
     }
   ]
