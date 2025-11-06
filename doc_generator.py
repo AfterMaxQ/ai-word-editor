@@ -3,6 +3,8 @@ import sys
 from docx import Document
 from docx.shared import Pt, Cm
 from docx.oxml.ns import qn
+from numpy.distutils.conv_template import header
+
 
 def load_document_data(filepath):
     """
@@ -57,6 +59,42 @@ def apply_paragraph_properties(paragraph, properties: dict):
         if 'bold' in properties:
             font.bold = bool(properties['bold'])
 
+def add_table_from_data(doc, element: dict):
+    """
+        根据element字典中的数据，在文档中添加一个表格。
+
+        Args:
+            doc: The python-docx Document object.
+            element (dict): 包含表格数据的字典。
+    """
+    properties = element.get("properties",{})
+    table_data = element.get('data',[])
+
+    # 1. 获取表格尺寸和验证
+    rows = properties.get('rows', 0)
+    cols = properties.get('cols', 0)
+    if rows==0 or cols==0 or not table_data:
+        print("警告：表格数据不完整，跳过此表格。")
+        return
+
+    # 2. 创建表格
+    table = doc.add_table(rows=rows, cols=cols)
+    table.style = 'Table Grid'
+
+    # 3. 填充数据并设置格式
+    for i in range(rows):
+        for j in range(cols):
+            # 获取单元格对象
+            cell = table.cell(i, j)
+            # 填充文本 (增加边界检查，防止数据行/列数与定义的rows/cols不匹配)
+            if i < len(table_data) and j < len(table_data[i]):
+                cell.text = str(table_data[i][j])
+            # 4. 如果是表头行，则加粗
+            if properties.get('header') and i == 0:
+                #单元格内的第一个段落的第一个run的字体
+                if cell.paragraphs and cell.paragraphs[0].runs:
+                    cell.paragraphs[0].runs[0].font.bold = True
+
 
 def create_document(data: dict):
     """
@@ -73,8 +111,9 @@ def create_document(data: dict):
     if 'elements' not in data or not isinstance(data['elements'], list):
         print("错误：JSON数据中缺少'elements'列表。")
         return doc # 返回一个空文档
-
     for element in data['elements']:
+        element_type = element.get('type')
+
         if element.get('type')=='paragraph':
             text = element.get('text', '')
             properties = element.get('properties', {})
@@ -88,6 +127,9 @@ def create_document(data: dict):
             else:
                 p = doc.add_paragraph(text)
                 apply_paragraph_properties(p, properties)
+
+        elif element_type == "table":
+            add_table_from_data(doc, element)
 
     return doc
 
