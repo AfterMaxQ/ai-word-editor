@@ -1,3 +1,5 @@
+# src/ai_parser.py
+
 from http.client import responses
 
 import requests
@@ -6,7 +8,7 @@ import json
 # 定义Ollama API的地址和模型名称
 OLLAMA_API_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "llama3:8b"
-SYSTEM_PROMPT_FILE = "system_prompt.txt"
+SYSTEM_PROMPT_FILE = "prompts/system_prompt.txt"
 
 def parse_natural_language_to_json(user_command: str) -> dict | None:
     """

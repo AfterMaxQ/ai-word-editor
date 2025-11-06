@@ -1,12 +1,10 @@
+# src/doc_generator.py
+
 import json
 import sys
 from docx import Document
 from docx.shared import Pt, Cm
-from docx.oxml.ns import qn
-from numpy.distutils.conv_template import header
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-
-from ai_parser import parse_natural_language_to_json
 
 
 def load_document_data(filepath):
@@ -113,6 +111,28 @@ def add_table_from_data(doc, element: dict):
                 if alignment_enum is not None and cell.paragraphs:
                     cell.paragraphs[0].paragraph_format.alignment = alignment_enum
 
+def add_list_from_data(doc, element: dict):
+    """
+        根据element字典中的数据，在文档中添加一个有序或无序列表。
+
+        Args:
+            doc: The python-docx Document object.
+            element (dict): 包含列表数据的字典。
+    """
+    properties = element.get('properties', {})
+    items = element.get('items', [])
+    # 确保items是一个非空列表
+    if not isinstance(items, list) or not items:
+        print("警告：列表数据为空或格式不正确，跳过此列表。")
+        return
+    # 根据 'ordered' 属性决定使用哪种段落样式
+    is_ordered = properties.get('ordered', False)
+    style = "List Number" if is_ordered else 'List Bullet'
+    # 遍历所有列表项，并使用指定的样式添加到文档中
+    for item_text in items:
+        doc.add_paragraph(str(item_text), style=style)
+
+
 
 def create_document(data: dict):
     """
@@ -129,6 +149,7 @@ def create_document(data: dict):
     if 'elements' not in data or not isinstance(data['elements'], list):
         print("错误：JSON数据中缺少'elements'列表。")
         return doc # 返回一个空文档
+
     for element in data['elements']:
         element_type = element.get('type')
 
@@ -149,42 +170,9 @@ def create_document(data: dict):
         elif element_type == "table":
             add_table_from_data(doc, element)
 
+        elif element_type == "list":
+            add_list_from_data(doc, element)
+
     return doc
 
-def main():
-    """
-    脚本的主执行函数。
-    负责接收用户指令、调用AI解析、创建文档并保存。
-    """
-    # 1. 定义用户的自然语言指令
-    user_command = """
-    给我一个一级标题叫'月度销售报告'。
-    然后另起一段，内容是'以下是本月的销售数据汇总：'。
-    接下来，创建一个3行3列的表格，包含表头，列对齐方式是左、中、中。
-    表格内容是：
-    销售员, 销售额(万), 区域
-    张三, 120, 华北
-    李四, 98, 华东
-    最后，再来一段，内容是'报告结束。'，设置为加粗。
-    """
 
-    # 2. 调用AI解析器，将自然语言转换为结构化数据
-    document_data = parse_natural_language_to_json(user_command)
-
-    # 如果解析失败，则退出
-    if not document_data:
-        print("文档生成失败，因为AI解析步骤出错。")
-        return
-
-    # 3. 创建文档 (这部分完全复用我们之前的成果！)
-    print("\n📄 正在根据AI生成的数据结构创建Word文档...")
-    document_object = create_document(document_data)
-    print("✅ 成功创建Word文档对象！")
-
-    # 4. 保存文档
-    output_filename = 'final_report.docx'
-    document_object.save(output_filename)
-    print(f"✅ 成功将文档保存为 '{output_filename}'！")
-
-if __name__ == "__main__":
-    main()

@@ -1,0 +1,35 @@
+{
+  "elements": [
+    {
+      "type": "paragraph",
+      "text": "项目周报",
+      "properties": { "style": "Heading 1" }
+    },
+    {
+      "type": "paragraph",
+      "text": "本周完成工作："
+    },
+    {
+      "type": "list",
+      "properties": { "ordered": false },
+      "items": [
+        "完成了对列表功能的支持。",
+        "设计了列表的JSON结构。",
+        "编写了相关的测试用例。"
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "下周计划："
+    },
+    {
+      "type": "list",
+      "properties": { "ordered": true },
+      "items": [
+        "实现图片插入功能。",
+        "搭建Streamlit UI原型。",
+        "开始积累数据集。"
+      ]
+    }
+  ]
+}
