@@ -4,6 +4,7 @@ from docx import Document
 from docx.shared import Pt, Cm
 from docx.oxml.ns import qn
 from numpy.distutils.conv_template import header
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 
 def load_document_data(filepath):
@@ -77,6 +78,15 @@ def add_table_from_data(doc, element: dict):
         print("警告：表格数据不完整，跳过此表格。")
         return
 
+    # 定义一个从字符串到docx枚举的映射字典
+    ALIGNMENT_MAP = {
+        'left': WD_ALIGN_PARAGRAPH.LEFT,
+        'center': WD_ALIGN_PARAGRAPH.CENTER,
+        'right': WD_ALIGN_PARAGRAPH.RIGHT,
+    }
+    # 获取JSON中定义的对齐方式列表
+    alignments = properties.get("alignments", [])
+
     # 2. 创建表格
     table = doc.add_table(rows=rows, cols=cols)
     table.style = 'Table Grid'
@@ -94,6 +104,12 @@ def add_table_from_data(doc, element: dict):
                 #单元格内的第一个段落的第一个run的字体
                 if cell.paragraphs and cell.paragraphs[0].runs:
                     cell.paragraphs[0].runs[0].font.bold = True
+
+            if j < len(alignments):
+                align_str = alignments[j]
+                alignment_enum = ALIGNMENT_MAP.get(align_str.lower())
+                if alignment_enum is not None and cell.paragraphs:
+                    cell.paragraphs[0].paragraph_format.alignment = alignment_enum
 
 
 def create_document(data: dict):
