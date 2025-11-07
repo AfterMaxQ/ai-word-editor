@@ -17,7 +17,7 @@ deepseek-r1:7b       755ced02ce7b    4.7 GB    2 hours ago
 llama3:8b            365c0bd3c000    4.7 GB    16 hours ago
 """
 
-MODEL_NAME = "qwen2.5-coder:14b"
+MODEL_NAME = "qwen2.5-coder:7b"
 SYSTEM_PROMPT_FILE = "prompts/system_prompt.txt"
 
 def parse_natural_language_to_json(user_command: str) -> dict | None:

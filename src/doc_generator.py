@@ -82,8 +82,8 @@ def add_table_from_data(doc, element: dict):
             doc: The python-docx Document object.
             element (dict): 包含表格数据的字典。
     """
-    properties = element.get("properties",{})
-    table_data = element.get('data',[])
+    properties = element.get("properties", {})
+    table_data = element.get('data', [])
 
     # 1. 验证数据完整性
     if not table_data or not table_data[0]:
@@ -93,7 +93,7 @@ def add_table_from_data(doc, element: dict):
     # 从数据中推断行数和列数，这比从properties中读取更可靠
     cols = len(table_data[0])
 
-    # 2. 创建表格，初始只有一行(用于表头)
+    # 2. 创建表格，初始只有一行（用于表头）
     table = doc.add_table(rows=1, cols=cols)
     table.style = 'Table Grid'
 
@@ -105,19 +105,21 @@ def add_table_from_data(doc, element: dict):
         if properties.get('header'):
             header_cells[j].paragraphs[0].runs[0].font.bold = True
 
-        # 4. 动态添加数据行
-        for i in range(1, len(table_data)):
-            row_cells = table.add_row().cells
-            for j in range(cols):
-                row_cells[j].text = str(table_data[i][j])
-        alignments = properties.get("alignments", [])
-        if alignments:
-            for col_idx, align_str in enumerate(alignments):
-                if col_idx < cols:
-                    alignment_enum = ALIGNMENT_MAP.get(align_str.lower())
-                    if alignment_enum:
-                        for row in table.rows:
-                            row.cells[col_idx].paragraphs[0].paragraph_format.alignment = alignment_enum
+    # 4. 动态添加并填充数据行
+    for i in range(1, len(table_data)):
+        row_cells = table.add_row().cells
+        for j in range(cols):
+            row_cells[j].text = str(table_data[i][j])
+
+    # 5. 应用列对齐 (在所有行都添加后进行)
+    alignments = properties.get("alignments", [])
+    if alignments:
+        for col_idx, align_str in enumerate(alignments):
+            if col_idx < cols:
+                alignment_enum = ALIGNMENT_MAP.get(align_str.lower())
+                if alignment_enum:
+                    for row in table.rows:
+                        row.cells[col_idx].paragraphs[0].paragraph_format.alignment = alignment_enum
 
 def add_list_from_data(doc, element: dict):
     """
