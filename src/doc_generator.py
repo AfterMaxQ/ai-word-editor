@@ -1,6 +1,7 @@
 # src/doc_generator.py
 
 import json
+import re
 import sys
 from docx import Document
 from docx.shared import Pt, Cm
@@ -355,7 +356,6 @@ def add_toc_from_data(doc, element: dict):
 def add_formula_from_data(doc, element: dict):
     """
     在文档中添加一个由LaTeX生成的原生Word公式。
-    如果渲染失败，则插入一个明确的错误提示。
     """
     properties = element.get("properties", {})
     latex_text = properties.get("text")
@@ -364,26 +364,27 @@ def add_formula_from_data(doc, element: dict):
         print("警告：公式元素缺少'text'属性。")
         return
 
-    # 1. ★ 调用我们全新的原生转换器获取OMML ★
-    omml_element = latex_to_omml(latex_text)
+    # 1. 调用转换器获取OMML段落
+    omml_para_element = latex_to_omml(latex_text)
 
-    # 2. 根据转换结果执行不同操作
-    if omml_element is not None:
-        # --- 成功路径 ---
-        # 创建一个新段落来容纳公式
+    if omml_para_element is not None:
+        # --- ★ 核心修复：替换段落内容 ★ ---
+        # 创建一个空的段落，然后用我们生成的OMML段落替换它的整个XML内容
         p = doc.add_paragraph()
-        # 直接将生成的OMML XML树附加到段落的底层XML中
-        p._p.append(omml_element)
+        p._element.getparent().replace(p._element, omml_para_element)
 
-        # 应用段落对齐 (例如 "center")
+        # 应用我们在JSON中指定的、更优先的对齐方式
         align_str = properties.get('alignment')
         if align_str:
             alignment_enum = ALIGNMENT_MAP.get(align_str.lower())
             if alignment_enum is not None:
-                p.paragraph_format.alignment = alignment_enum
+                # 注意：现在我们需要从 omml_para_element 中找到段落属性并设置它
+                # 但更简单、更可靠的方式是直接操作 p 的 paragraph_format
+                # 在替换之前获取段落对象
+                new_p = doc.paragraphs[-1]
+                new_p.alignment = alignment_enum
     else:
-        # --- 失败回退路径 ---
-        # 如果 latex_to_omml 返回 None，说明转换失败
+        # --- 失败回退路径 (不变) ---
         error_text = f"[公式渲染失败: 引擎不支持以下LaTeX语法: '{latex_text}']"
         p = doc.add_paragraph()
         run = p.add_run(error_text)
