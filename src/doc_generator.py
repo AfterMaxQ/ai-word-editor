@@ -10,6 +10,9 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.enum.section import WD_ORIENT
 
+from lxml import etree
+from latex2mathml.converter import convert
+
 # 定义一个从字符串到docx枚举的映射字典
 ALIGNMENT_MAP = {
     'left': WD_ALIGN_PARAGRAPH.LEFT,
