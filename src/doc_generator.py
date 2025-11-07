@@ -85,45 +85,39 @@ def add_table_from_data(doc, element: dict):
     properties = element.get("properties",{})
     table_data = element.get('data',[])
 
-    # 1. 获取表格尺寸和验证
-    rows = properties.get('rows', 0)
-    cols = properties.get('cols', 0)
-    if rows==0 or cols==0 or not table_data:
-        print("警告：表格数据不完整，跳过此表格。")
+    # 1. 验证数据完整性
+    if not table_data or not table_data[0]:
+        print("警告：表格数据为空或格式不正确，跳过此表格。")
         return
 
-    # 定义一个从字符串到docx枚举的映射字典
-    ALIGNMENT_MAP = {
-        'left': WD_ALIGN_PARAGRAPH.LEFT,
-        'center': WD_ALIGN_PARAGRAPH.CENTER,
-        'right': WD_ALIGN_PARAGRAPH.RIGHT,
-    }
-    # 获取JSON中定义的对齐方式列表
-    alignments = properties.get("alignments", [])
+    # 从数据中推断行数和列数，这比从properties中读取更可靠
+    cols = len(table_data[0])
 
-    # 2. 创建表格
-    table = doc.add_table(rows=rows, cols=cols)
+    # 2. 创建表格，初始只有一行(用于表头)
+    table = doc.add_table(rows=1, cols=cols)
     table.style = 'Table Grid'
 
-    # 3. 填充数据并设置格式
-    for i in range(rows):
-        for j in range(cols):
-            # 获取单元格对象
-            cell = table.cell(i, j)
-            # 填充文本 (增加边界检查，防止数据行/列数与定义的rows/cols不匹配)
-            if i < len(table_data) and j < len(table_data[i]):
-                cell.text = str(table_data[i][j])
-            # 4. 如果是表头行，则加粗
-            if properties.get('header') and i == 0:
-                #单元格内的第一个段落的第一个run的字体
-                if cell.paragraphs and cell.paragraphs[0].runs:
-                    cell.paragraphs[0].runs[0].font.bold = True
+    # 3. 填充表头行
+    header_cells = table.rows[0].cells
+    for j in range(cols):
+        header_cells[j].text = str(table_data[0][j])
+        # 如果是表头，则加粗
+        if properties.get('header'):
+            header_cells[j].paragraphs[0].runs[0].font.bold = True
 
-            if j < len(alignments):
-                align_str = alignments[j]
-                alignment_enum = ALIGNMENT_MAP.get(align_str.lower())
-                if alignment_enum is not None and cell.paragraphs:
-                    cell.paragraphs[0].paragraph_format.alignment = alignment_enum
+        # 4. 动态添加数据行
+        for i in range(1, len(table_data)):
+            row_cells = table.add_row().cells
+            for j in range(cols):
+                row_cells[j].text = str(table_data[i][j])
+        alignments = properties.get("alignments", [])
+        if alignments:
+            for col_idx, align_str in enumerate(alignments):
+                if col_idx < cols:
+                    alignment_enum = ALIGNMENT_MAP.get(align_str.lower())
+                    if alignment_enum:
+                        for row in table.rows:
+                            row.cells[col_idx].paragraphs[0].paragraph_format.alignment = alignment_enum
 
 def add_list_from_data(doc, element: dict):
     """
@@ -319,11 +313,6 @@ def create_document(data: dict):
             Document: 一个构建好的python-docx的Document对象。
     """
     doc = Document()
-
-    # 之前: if 'page_setup' in data:
-    #         apply_page_setup(doc, data['page_setup'])
-
-    # 修改后: 变得更健壮，能处理两种可能的JSON结构
     # 步骤 1: 查找页面设置数据
     page_setup_data = data.get('page_setup')
     if not page_setup_data:
@@ -343,21 +332,11 @@ def create_document(data: dict):
         if element.get('type')=='paragraph':
             text = element.get('text', '')
             properties = element.get('properties', {})
-            if not isinstance(properties, dict):
-                properties = {}
-        # --- 新增的兼容逻辑 ---
-        elif element_type == 'heading':
-            print("警告：接收到不规范的 'heading' 类型，将作为二级标题处理。")
-            text = element.get('text', '')
-            doc.add_paragraph(text, style='Heading 2')
-        # --- 兼容逻辑结束 ---
-
             style = properties.get("style") if isinstance(properties, dict) else None
-
-            if style and 'Heading' in style:
-                p = doc.add_paragraph(text, style=style)
-            else:
-                p = doc.add_paragraph(text)
+            # 创建段落，如果存在样式就立即应用
+            p = doc.add_paragraph(text, style=style)
+            # 对于没有使用样式的段落，应用额外的属性
+            if not style and isinstance(properties, dict):
                 apply_paragraph_properties(p, properties)
 
         elif element_type == "table":
@@ -374,6 +353,12 @@ def create_document(data: dict):
 
         elif element_type == "footer":
             add_footer_from_data(doc, element)
+
+        # 兼容 AI 错误地生成 "heading" 类型 (优雅降级处理)
+        elif element_type == 'heading':
+            print(f"警告：接收到不规范的 'heading' 类型 ({element.get('text', '')})，将作为二级标题处理。")
+            text = element.get('text', '')
+            doc.add_paragraph(text, style='Heading 2')
 
     return doc
 
