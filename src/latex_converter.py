@@ -1,167 +1,209 @@
 # src/latex_converter.py
-
-# --- 1. Imports (for pylatexenc v2.x compatibility, ADDING ParsingState) ---
-from pylatexenc.latexwalker import (
-    LatexWalker, LatexCharsNode, LatexMacroNode, LatexGroupNode, LatexMathNode,
-    LatexWalkerParseError, ParsingState  # <-- CRITICAL: ParsingState is imported here
-)
+import re
 from lxml import etree
-from docx.oxml.ns import qn
-import traceback
 
-# --- 2. OMML Namespace and Builder Functions (Unchanged) ---
+# --- 1. OMML 命名空间和辅助函数 ---
 M_NAMESPACE = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 M_PREFIX = "{%s}" % M_NAMESPACE
 
 
-# ... (All _create_* helper functions remain exactly the same) ...
-def _m_tag(tag_name: str) -> str: return M_PREFIX + tag_name
+def _m_tag(tag_name: str) -> str:
+    """为OMML标签添加正确的命名空间前缀。"""
+    return M_PREFIX + tag_name
 
 
-def _create_run(elements: list = None) -> etree._Element:
-    run = etree.Element(_m_tag('r'))
-    if elements:
-        for elem in elements: run.append(elem)
-    return run
+# --- 2. OMML 元素构建器 ---
+# 这些函数负责创建特定类型的OMML XML结构。
 
-
-def _create_text(text: str) -> etree._Element:
-    mt = etree.Element(_m_tag('t'))
-    if text.strip() != text: mt.set(qn('xml:space'), 'preserve')
+def create_run_omml(text: str) -> etree._Element:
+    """创建一个包含文本的OMML run (<m:r><m:t>...</m:t></m:r>)。"""
+    mr = etree.Element(_m_tag('r'))
+    mt = etree.SubElement(mr, _m_tag('t'))
+    # Word需要保留空格，尤其是在操作符周围
+    if text.startswith(' ') or text.endswith(' '):
+        mt.set(qn('xml:space'), 'preserve')
     mt.text = text
-    return mt
+    return mr
 
 
-def _create_fraction(num_run: etree._Element, den_run: etree._Element) -> etree._Element:
+def create_fraction_omml(num_element: etree._Element, den_element: etree._Element) -> etree._Element:
+    """创建一个OMML分数 (<m:f>) 元素。"""
     mf = etree.Element(_m_tag('f'))
-    mnum, mden = etree.SubElement(mf, _m_tag('num')), etree.SubElement(mf, _m_tag('den'))
-    mnum.append(num_run)
-    mden.append(den_run)
+    mnum = etree.SubElement(mf, _m_tag('num'))
+    mden = etree.SubElement(mf, _m_tag('den'))
+    mnum.append(num_element)
+    mden.append(den_element)
     return mf
 
 
-def _create_sqrt(base_run: etree._Element) -> etree._Element:
+def create_sqrt_omml(base_element: etree._Element) -> etree._Element:
+    """创建一个OMML平方根 (<m:rad>) 元素。"""
     mrad = etree.Element(_m_tag('rad'))
-    etree.SubElement(mrad, _m_tag('deg'))
+    mdeg = etree.SubElement(mrad, _m_tag('deg'))  # 空的deg表示平方根
     me = etree.SubElement(mrad, _m_tag('e'))
-    me.append(base_run)
+    me.append(base_element)
     return mrad
 
 
-def _create_accent(base_run: etree._Element, accent_char: str) -> etree._Element:
+def create_accent_omml(base_element: etree._Element, accent_char: str) -> etree._Element:
+    """创建一个OMML重音 (<m:acc>) 元素，例如 hat。"""
     macc = etree.Element(_m_tag('acc'))
     maccPr = etree.SubElement(macc, _m_tag('accPr'))
     mchr = etree.SubElement(maccPr, _m_tag('chr'))
     mchr.set(_m_tag('val'), accent_char)
     me = etree.SubElement(macc, _m_tag('e'))
-    me.append(base_run)
+    me.append(base_element)
     return macc
 
 
-def _create_script(base_run: etree._Element, sub_run: etree._Element, sup_run: etree._Element) -> etree._Element:
-    if sub_run is not None and sup_run is not None:
-        tag = 'sSubSup'
-    elif sub_run is not None:
-        tag = 'sSub'
-    else:  # sup_run must be not None
-        tag = 'sSup'
-    elem = etree.Element(_m_tag(tag))
-    me = etree.SubElement(elem, _m_tag('e'))
-    me.append(base_run)
-    if sub_run is not None:
-        msub = etree.SubElement(elem, _m_tag('sub'))
-        msub.append(sub_run)
-    if sup_run is not None:
-        msup = etree.SubElement(elem, _m_tag('sup'))
-        msup.append(sup_run)
-    return elem
+def create_superscript_omml(base_element: etree._Element, sup_element: etree._Element) -> etree._Element:
+    """创建一个OMML上标 (<m:sSup>) 元素。"""
+    msSup = etree.Element(_m_tag('sSup'))
+    me = etree.SubElement(msSup, _m_tag('e'))
+    msup = etree.SubElement(msSup, _m_tag('sup'))
+    # 如果基础本身也是一个run，我们需要解包它
+    for child in base_element:
+        me.append(child)
+    msup.append(sup_element)
+    return msSup
 
 
-# --- 3. The Converter Class using pylatexenc (FINAL v2.x COMPATIBLE FIX) ---
-class LatexToOmmlConverter:
-    SIMPLE_SYMBOLS = {
-        'hbar': 'ħ', 'partial': '∂', 'omega': 'ω', 'Psi': 'Ψ',
-        'rangle': '⟩', 'langle': '⟨'
-    }
+# --- 3. 原生LaTeX解析器 ---
 
-    def __init__(self, latex_string: str):
-        lw = LatexWalker(latex_string)
+# 定义LaTeX特殊符号到Unicode的映射
+SYMBOL_MAP = {
+    '\\hbar': 'ħ', '\\partial': '∂', '\\omega': 'ω',
+    '\\Psi': 'Ψ', '\\rangle': '⟩', '\\langle': '⟨',
+    # 可以继续添加更多...
+}
 
-        # --- START OF THE DECISIVE v2.x FIX ---
-        # Create a ParsingState object that explicitly starts in math mode.
-        math_parsing_state = ParsingState(in_math_mode=True)
 
-        # Pass this state object to the parser. This is the correct v2.x way.
-        self.nodelist, _, _ = lw.get_latex_nodes(parsing_state=math_parsing_state)
-        # --- END OF THE DECISIVE v2.x FIX ---
+class ParserState:
+    """一个简单的类，用于在解析过程中跟踪当前位置。"""
 
-    # ... (The rest of the class: convert, _render_nodelist_to_run, _render_node, etc. remains IDENTICAL) ...
-    def convert(self) -> etree._Element:
-        final_run = self._render_nodelist_to_run(self.nodelist)
+    def __init__(self, tokens: list[str]):
+        self.tokens = tokens
+        self.pos = 0
+
+    def current_token(self) -> str | None:
+        """获取当前标记，但不前进。"""
+        return self.tokens[self.pos] if self.pos < len(self.tokens) else None
+
+    def advance(self):
+        """前进到下一个标记。"""
+        self.pos += 1
+
+
+def tokenize(latex_string: str) -> list[str]:
+    """
+    将LaTeX字符串分解为标记列表。
+    例如: '\\frac{a}{b}' -> ['\\frac', '{', 'a', '}', '{', 'b', '}']
+    """
+    # 这个正则表达式匹配:
+    # 1. \\后面跟字母的命令 (\\frac)
+    # 2. 花括号、上标符 ({, }, ^)
+    # 3. 单个字母或数字
+    # 4. 其他任何单个字符 (如 =, +, |)
+    token_regex = re.compile(r"(\\[a-zA-Z]+|[{}^]|[a-zA-Z0-9]|.)")
+    return [token for token in token_regex.findall(latex_string) if not token.isspace()]
+
+
+def parse_latex_tokens(state: ParserState) -> etree._Element:
+    """
+    解析标记列表并生成一个OMML run (<m:r>)。
+    这是递归下降解析器的核心。
+    """
+    # 每个解析作用域的结果都放在一个OMML run中
+    current_run = etree.Element(_m_tag('r'))
+
+    while (token := state.current_token()) is not None and token != '}':
+        state.advance()
+
+        if token.startswith('\\'):  # --- 处理命令 ---
+            if token in SYMBOL_MAP:
+                current_run.append(create_run_omml(SYMBOL_MAP[token]))
+            elif token == '\\frac':
+                num_run = parse_latex_tokens(state)  # 递归解析分子
+                den_run = parse_latex_tokens(state)  # 递归解析分母
+                current_run.append(create_fraction_omml(num_run, den_run))
+            elif token == '\\sqrt':
+                base_run = parse_latex_tokens(state)  # 递归解析根号内的内容
+                current_run.append(create_sqrt_omml(base_run))
+            elif token == '\\hat':
+                base_run = parse_latex_tokens(state)  # 递归解析要加hat的内容
+                current_run.append(create_accent_omml(base_run, '^'))
+            else:
+                print(f"警告: 未知的LaTeX命令 '{token}'，已忽略。")
+
+        elif token == '{':  # --- 处理分组 ---
+            # 递归解析组内的内容，并将其子元素附加到当前run
+            group_run = parse_latex_tokens(state)
+            for child in group_run:
+                current_run.append(child)
+
+        elif token == '^':  # --- 处理上标 ---
+            # 上标修饰前一个元素
+            last_element = current_run[-1]
+            if last_element is not None:
+                current_run.remove(last_element)  # 移除最后一个元素
+                sup_run = parse_latex_tokens(state)  # 解析上标内容
+                # 创建上标元素并替换
+                ssup_element = create_superscript_omml(last_element, sup_run)
+                current_run.append(ssup_element)
+
+        else:  # --- 处理普通文本/字符 ---
+            current_run.append(create_run_omml(token))
+
+    # 如果我们是因为遇到 '}' 而结束循环，需要消耗掉这个标记
+    if state.current_token() == '}':
+        state.advance()
+
+    return current_run
+
+
+def latex_to_omml(latex_string: str) -> etree._Element | None:
+    """
+    将LaTeX数学字符串完整地转换为一个独立的OMML XML元素。
+    这是外部调用的主函数。
+
+    Args:
+        latex_string (str): 要转换的LaTeX格式的数学公式字符串。
+
+    Returns:
+        etree._Element | None: 转换成功则返回一个代表 <m:oMath> 的lxml元素，
+                               否则返回None。
+    """
+    try:
+        # 步骤 1: 词法分析
+        tokens = tokenize(latex_string)
+        if not tokens:
+            return None
+        state = ParserState(tokens)
+
+        # 步骤 2: 创建OMML顶层结构
         omml_math = etree.Element(_m_tag('oMath'))
+        # Word公式通常包裹在一个 oMathPara 中
         omml_para = etree.SubElement(omml_math, _m_tag('oMathPara'))
-        omml_para.append(final_run)
+
+        # 步骤 3: 启动递归解析
+        result_run = parse_latex_tokens(state)
+        omml_para.append(result_run)
+
+        # 步骤 4: 检查解析是否消耗了所有标记
+        if state.current_token() is not None:
+            print(f"警告: 解析在标记 '{state.current_token()}' 处提前结束，可能存在语法错误。")
+
         return omml_math
 
-    def _render_nodelist_to_run(self, nodelist) -> etree._Element:
-        main_run = _create_run()
-        for node in nodelist:
-            element = self._render_node(node)
-            if element is None: continue
-            if element.tag == _m_tag('r'):
-                for child in element: main_run.append(child)
-            else:
-                main_run.append(element)
-        return main_run
-
-    def _render_node(self, node) -> etree._Element | None:
-        if node.isNodeType(LatexCharsNode): return _create_text(node.chars)
-        if node.isNodeType(LatexGroupNode): return self._render_nodelist_to_run(node.nodelist)
-        if node.isNodeType(LatexMacroNode): return self._render_macro_node(node)
-        if node.isNodeType(LatexMathNode): return self._render_math_node(node)
-        print(f"警告: 未处理的节点类型 '{type(node).__name__}'")
+    except IndexError:
+        # 当命令需要参数但没找到时 (例如 \frac{a} )，会触发IndexError
+        print(f"错误: LaTeX语法错误，可能缺少参数或括号不匹配。原始文本: '{latex_string}'")
+        return None
+    except Exception as e:
+        print(f"错误: 原生LaTeX转换失败 -> {e} (原始LaTeX: '{latex_string}')")
         return None
 
-    def _render_macro_node(self, node: LatexMacroNode) -> etree._Element:
-        macro_name = node.macroname
-        args = node.nodeargs if node.nodeargs else []
-        if macro_name in self.SIMPLE_SYMBOLS and not args: return _create_text(self.SIMPLE_SYMBOLS[macro_name])
-        if macro_name == 'frac' and len(args) == 2:
-            num_run = self._render_nodelist_to_run([args[0]])
-            den_run = self._render_nodelist_to_run([args[1]])
-            return _create_fraction(num_run, den_run)
-        if macro_name == 'sqrt' and len(args) == 1:
-            content_run = self._render_nodelist_to_run([args[0]])
-            return _create_sqrt(content_run)
-        if macro_name == 'hat' and len(args) == 1:
-            content_run = self._render_nodelist_to_run([args[0]])
-            return _create_accent(content_run, '^')
-        print(f"警告: 不支持的宏或参数数量不正确: '\\{macro_name}'")
-        return _create_text(f"[?\\{macro_name}?]")
 
-    def _render_math_node(self, node: LatexMathNode) -> etree._Element:
-        base_run, sub_run, sup_run = None, None, None
-        if node.base is not None:
-            base_run = self._render_nodelist_to_run(node.base.nodelist)
-        else:
-            return _create_text("?")
-        if node.sub is not None: sub_run = self._render_nodelist_to_run(node.sub.nodelist)
-        if node.sup is not None: sup_run = self._render_nodelist_to_run(node.sup.nodelist)
-        return _create_script(base_run, sub_run, sup_run)
-
-
-# --- 4. The Public Facade Function (Unchanged from the debugging upgrade) ---
-def latex_to_omml(latex_string: str) -> tuple[etree._Element | None, str | None]:
-    try:
-        cleaned_latex = latex_string.encode('utf-8').decode('unicode_escape')
-        converter = LatexToOmmlConverter(cleaned_latex)
-        omml_element = converter.convert()
-        return (omml_element, None)
-    except LatexWalkerParseError as e:
-        error_msg = f"LaTeX解析失败: {e}"
-        print(f"错误: {error_msg} (原始LaTeX: '{latex_string}')")
-        return (None, error_msg)
-    except Exception as e:
-        error_msg = f"OMML渲染器内部错误: {e}\n{traceback.format_exc()}"
-        print(f"错误: {error_msg} (原始LaTeX: '{latex_string}')")
-        return (None, f"OMML渲染器内部错误: {e}")
+# --- 4. 导入 lxml.etree.qn 以支持 xml:space ---
+# 这是使 set(qn(...)) 工作所必需的
+from docx.oxml.ns import qn

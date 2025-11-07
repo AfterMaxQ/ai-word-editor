@@ -354,9 +354,8 @@ def add_toc_from_data(doc, element: dict):
 
 def add_formula_from_data(doc, element: dict):
     """
-    【调试升级版】
     在文档中添加一个由LaTeX生成的原生Word公式。
-    如果渲染失败，则插入一个包含详细错误原因的提示。
+    如果渲染失败，则插入一个明确的错误提示。
     """
     properties = element.get("properties", {})
     latex_text = properties.get("text")
@@ -365,16 +364,18 @@ def add_formula_from_data(doc, element: dict):
         print("警告：公式元素缺少'text'属性。")
         return
 
-    # 1. 调用转换器，接收包含结果和错误的元组
-    omml_element, error_message = latex_to_omml(latex_text)
+    # 1. ★ 调用我们全新的原生转换器获取OMML ★
+    omml_element = latex_to_omml(latex_text)
 
     # 2. 根据转换结果执行不同操作
     if omml_element is not None:
         # --- 成功路径 ---
+        # 创建一个新段落来容纳公式
         p = doc.add_paragraph()
+        # 直接将生成的OMML XML树附加到段落的底层XML中
         p._p.append(omml_element)
 
-        # 应用段落对齐
+        # 应用段落对齐 (例如 "center")
         align_str = properties.get('alignment')
         if align_str:
             alignment_enum = ALIGNMENT_MAP.get(align_str.lower())
@@ -382,14 +383,13 @@ def add_formula_from_data(doc, element: dict):
                 p.paragraph_format.alignment = alignment_enum
     else:
         # --- 失败回退路径 ---
-        # 3. 使用从转换器传来的、更详细的 error_message
-        error_text = f"[公式渲染失败: {error_message}]"
+        # 如果 latex_to_omml 返回 None，说明转换失败
+        error_text = f"[公式渲染失败: 引擎不支持以下LaTeX语法: '{latex_text}']"
         p = doc.add_paragraph()
         run = p.add_run(error_text)
         font = run.font
         font.color.rgb = RGBColor(255, 0, 0)
-        # 打印到控制台的信息也使用详细错误
-        print(f"错误: 渲染公式失败 -> {latex_text} | 原因: {error_message}")
+        print(f"错误: {error_text}")
 
 
 def create_document(data: dict):
