@@ -66,10 +66,11 @@ You **MUST** adhere to the following strict rules:
     - `properties`: (Optional)
         - `title`: String, the title to display above the TOC.
 
-9.  **Formula Object** (这是新增的)
+9.  **Formula Object**
     - `type`: "formula"
     - `properties`:
-        - `text`: String, the LaTeX code for the formula. It should be a valid, self-contained LaTeX math snippet.
+        - `text`: String, the LaTeX code for the formula.
+        - `alignment`: (Optional) String, "left", "center", or "right". (新增)
 
 --- EXAMPLES (LEARN FROM THESE) ---
 
@@ -173,3 +174,26 @@ You **MUST** adhere to the following strict rules:
 *   **GOOD JSON (Correctly typed)**:
     ```json
     { "elements": [ { "type": "formula", "properties": { "text": "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}" } } ] }
+
+**Example 7: Formula Alignment**
+
+*   **User Command**: "Insert the quadratic formula x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}, and make sure it is centered."
+*   **BAD JSON (No Alignment property)**: *Formulas need 'alignment' in properties for centering.*
+    ```json
+    { "elements": [ { "type": "formula", "properties": { "text": "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}" } } ] }
+    ```
+*   **GOOD JSON (Correct Alignment)**:
+    ```json
+    { "elements": [ { "type": "formula", "properties": { "text": "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}", "alignment": "center" } } ] }
+    ```
+
+**Example 8: Separating Instruction from Content**
+
+*   **User Command**: "Finally, add the formula E = mc^2."
+*   **BAD JSON (Merged)**: *Never merge the instruction text with the formula content.*
+    ```json
+    { "elements": [ { "type": "paragraph", "text": "Finally, add the formula E = mc^2." } ] }
+    ```
+*   **GOOD JSON (Correctly Separated)**: *The instruction becomes a paragraph, the LaTeX becomes a formula element.*
+    ```json
+    { "elements": [ { "type": "paragraph", "text": "Finally, add the formula:" }, { "type": "formula", "properties": { "text": "E = mc^2" } } ] }

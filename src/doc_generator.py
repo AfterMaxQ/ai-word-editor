@@ -9,9 +9,10 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.enum.section import WD_ORIENT
+from .latex_converter import latex_to_omml
 
-from lxml import etree
-from latex2mathml.converter import convert
+
+from docx.shared import RGBColor
 
 # 定义一个从字符串到docx枚举的映射字典
 ALIGNMENT_MAP = {
@@ -350,6 +351,47 @@ def add_toc_from_data(doc, element: dict):
     run._r.append(fldChar_separate)
     run._r.append(fldChar_end)
 
+
+def add_formula_from_data(doc, element: dict):
+    """
+    【调试升级版】
+    在文档中添加一个由LaTeX生成的原生Word公式。
+    如果渲染失败，则插入一个包含详细错误原因的提示。
+    """
+    properties = element.get("properties", {})
+    latex_text = properties.get("text")
+
+    if not latex_text:
+        print("警告：公式元素缺少'text'属性。")
+        return
+
+    # 1. 调用转换器，接收包含结果和错误的元组
+    omml_element, error_message = latex_to_omml(latex_text)
+
+    # 2. 根据转换结果执行不同操作
+    if omml_element is not None:
+        # --- 成功路径 ---
+        p = doc.add_paragraph()
+        p._p.append(omml_element)
+
+        # 应用段落对齐
+        align_str = properties.get('alignment')
+        if align_str:
+            alignment_enum = ALIGNMENT_MAP.get(align_str.lower())
+            if alignment_enum is not None:
+                p.paragraph_format.alignment = alignment_enum
+    else:
+        # --- 失败回退路径 ---
+        # 3. 使用从转换器传来的、更详细的 error_message
+        error_text = f"[公式渲染失败: {error_message}]"
+        p = doc.add_paragraph()
+        run = p.add_run(error_text)
+        font = run.font
+        font.color.rgb = RGBColor(255, 0, 0)
+        # 打印到控制台的信息也使用详细错误
+        print(f"错误: 渲染公式失败 -> {latex_text} | 原因: {error_message}")
+
+
 def create_document(data: dict):
     """
         根据传入的数据字典，创建一个Word文档对象。
@@ -415,14 +457,16 @@ def create_document(data: dict):
         elif element_type == "footer":
             add_footer_from_data(doc, element)
 
-        elif element_type == "page_breake":
+        elif element_type == "page_break":
             add_page_break_from_data(doc, element)
 
-        # --- 新增的分支 ---
         elif element_type == "toc":
             add_toc_from_data(doc, element)
 
-        # 兼容 AI 错误地生成 "heading" 类型 (优雅降级处理)
+        elif element_type == "formula":
+            add_formula_from_data(doc, element)
+
+        # 兼容 AI 错误地生成 "heading" 类型
         elif element_type == 'heading':
             print(f"警告：接收到不规范的 'heading' 类型 ({element.get('text', '')})，将作为二级标题处理。")
             text = element.get('text', '')

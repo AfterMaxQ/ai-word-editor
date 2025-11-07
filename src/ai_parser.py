@@ -17,7 +17,7 @@ OLLAMA_API_URL = "http://localhost:11434/api/chat"
     llama3:8b            365c0bd3c000    4.7 GB    16 hours ago
 """
 
-MODEL_NAME = "deepseek-r1:14b"
+MODEL_NAME = "qwen2.5-coder:14b"
 SYSTEM_PROMPT_FILE = "prompts/system_prompt.txt"
 
 def parse_natural_language_to_json(user_command: str) -> dict | None:
