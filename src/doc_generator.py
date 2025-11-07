@@ -8,6 +8,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.enum.section import WD_ORIENT
 
 # 定义一个从字符串到docx枚举的映射字典
 ALIGNMENT_MAP = {
@@ -257,6 +258,49 @@ def add_footer_from_data(doc, element: dict):
     else:
         paragraph.add_run(text)
 
+def apply_page_setup(doc, page_setup_data: dict):
+    """
+        根据 page_setup_data 字典中的数据，应用页面布局设置。
+
+        Args:
+            doc: The python-docx Document object.
+            page_setup_data (dict): 包含页面设置（方向、边距）的字典。
+    """
+    if not page_setup_data:
+        return
+
+    # 在Word文档中，页面布局是“节(Section)”的属性。
+    # 对于一个新文档，默认只有一个节。
+    section = doc.sections[0]
+
+    #设置页面方向
+    orientation_str = page_setup_data.get('orientation')
+    if orientation_str == 'landscape':
+        section.orientation = WD_ORIENT.LANDSCAPE
+
+    # 设置页边距
+    margins = page_setup_data.get('margins')
+    if isinstance(margins, dict):
+        # --- 这是修复后的代码 ---
+        # 我们现在不仅检查键是否存在，还检查它的值是否为 None
+
+        top_cm = margins.get('top')
+        if top_cm is not None:
+            section.top_margin = Cm(top_cm)
+
+        bottom_cm = margins.get('bottom')
+        if bottom_cm is not None:
+            section.bottom_margin = Cm(bottom_cm)
+
+        left_cm = margins.get('left')
+        if left_cm is not None:
+            section.left_margin = Cm(left_cm)
+
+        right_cm = margins.get('right')
+        if right_cm is not None:
+            section.right_margin = Cm(right_cm)
+
+
 def create_document(data: dict):
     """
         根据传入的数据字典，创建一个Word文档对象。
@@ -268,6 +312,9 @@ def create_document(data: dict):
             Document: 一个构建好的python-docx的Document对象。
     """
     doc = Document()
+
+    if "page_setup" in data:
+        apply_page_setup(doc, data['page_setup'])
 
     if 'elements' not in data or not isinstance(data['elements'], list):
         print("错误：JSON数据中缺少'elements'列表。")

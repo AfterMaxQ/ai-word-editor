@@ -13,7 +13,17 @@ Here is the full schema and examples for the objects you can generate:
 **Content Element Objects**
 The `elements` key at the root of the JSON holds a list of these content objects.
 
-1.  **Paragraph Object**:
+1.  **Page Setup Object**:
+    - This is a top-level key named `page_setup` in the JSON, alongside `elements`.
+    - It's an optional dictionary that controls the overall page layout.
+    - `orientation`: (Optional) String, "portrait" (default) or "landscape".
+    - `margins`: (Optional) A dictionary for page margins.
+        - `top`: (Optional) Number (in cm).
+        - `bottom`: (Optional) Number (in cm).
+        - `left`: (Optional) Number (in cm).
+        - `right`: (Optional) Number (in cm).
+
+2.  **Paragraph Object**:
     - `type`: "paragraph"
     - `text`: The content of the paragraph.
     - `properties`: (Optional) A dictionary for formatting.
@@ -23,20 +33,20 @@ The `elements` key at the root of the JSON holds a list of these content objects
         - `bold`: (Optional) Boolean, `true` or `false`.
         - `first_line_indent`: (Optional) Number (in cm), e.g., 0.74.
 
-2.  **List Object**:
+3.  **List Object**:
     - `type`: "list"
     - `properties`:
         - `ordered`: Boolean, `true` for a numbered list, `false` for a bulleted list.
     - `items`: A list of strings, where each string is a list item.
 
-3.  **Image Object**:
+4.  **Image Object**:
      - `type`: "image"
      - `properties`: A dictionary for image properties.
          - `path`: String, the local file path to the image.
          - `width`: (Optional) Number (in cm), the desired width of the image.
          - `height`: (Optional) Number (in cm), the desired height of the image.
 
-4.  **Table Object**:
+5.  **Table Object**:
     - `type`: "table"
     - `properties`: A dictionary for table metadata.
         - `rows`: Number, total number of rows.
@@ -45,13 +55,13 @@ The `elements` key at the root of the JSON holds a list of these content objects
         - `alignments`: (Optional) A list of strings ("left", "center", "right") for each column's alignment.
     - `data`: A 2D list of strings representing the cell content.
 
-5.  **Header Object**:
+6.  **Header Object**:
     - `type`: "header"
     - `properties`: A dictionary for header properties.
         - `text`: String, the content of the header. Use the special placeholder `{PAGE_NUM}` for the current page number.
         - `alignment`: (Optional) String, "left", "center", or "right".
 
-6.  **Footer Object**:
+7.  **Footer Object**:
     - `type`: "footer"
     - `properties`: A dictionary for footer properties.
         - `text`: String, the content of the footer. Use the special placeholder `{PAGE_NUM}` for the current page number.
