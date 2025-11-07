@@ -6,6 +6,15 @@ from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
+# 定义一个从字符串到docx枚举的映射字典
+ALIGNMENT_MAP = {
+    'left': WD_ALIGN_PARAGRAPH.LEFT,
+    'center': WD_ALIGN_PARAGRAPH.CENTER,
+    'right': WD_ALIGN_PARAGRAPH.RIGHT,
+}
 
 def load_document_data(filepath):
     """
@@ -59,6 +68,7 @@ def apply_paragraph_properties(paragraph, properties: dict):
         #设置粗体
         if 'bold' in properties:
             font.bold = bool(properties['bold'])
+
 
 def add_table_from_data(doc, element: dict):
     """
@@ -161,6 +171,92 @@ def add_image_from_data(doc, element: dict):
         # 捕获其他可能的错误，如文件格式不支持等
         print(f"警告：插入图片时发生错误 -> {path} ({e})，跳过此图片。")
 
+def add_page_number(paragraph):
+    """
+        在一个段落中添加页码域。
+        这部分代码比较底层，直接操作Word文档的XML结构。
+    """
+    # 创建一个 run (可以理解为段落中的一小段格式统一的文本)
+    run = paragraph.add_run()
+
+    # --- 开始添加复杂的页码域 ---
+    # 1. 创建 fldChar 并设置其类型为 'begin'
+    fldChar_begin = OxmlElement('w:fldChar')
+    fldChar_begin.set(qn('w:fldCharType'), 'begin')
+
+    # 2. 创建 instrText，这是页码的指令
+    instrText = OxmlElement('w:instrText')
+    instrText.set(qn('xml:space'), 'preserve')
+    instrText.text = 'PAGE'  # PAGE 表示当前页码
+
+    # 3. 创建 fldChar 并设置其类型为 'end'
+    fldChar_end = OxmlElement('w:fldChar')
+    fldChar_end.set(qn('w:fldCharType'), 'end')
+
+    # 将这三个元素按顺序添加到 run 中
+    run._r.append(fldChar_begin)
+    run._r.append(instrText)
+    run._r.append(fldChar_end)
+
+def add_header_from_data(doc, element: dict):
+    """
+        根据element字典中的数据，在文档中添加页眉。
+
+        Args:
+            doc: The python-docx Document object.
+            element (dict): 包含页眉数据的字典。
+    """
+    properties = element.get("properties", {})
+    text = properties.get("text", "")
+
+    section = doc.sections[0]
+    header = section.header
+
+    paragraph = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+    paragraph.clear()
+
+    #设置对齐
+    align_str = properties.get('alignment', 'center')
+    paragraph.alignment = ALIGNMENT_MAP.get(align_str.lower(), WD_ALIGN_PARAGRAPH.CENTER)
+
+    if '{PAGE_NUM}' in text:
+        parts = text.split('{PAGE_NUM}')
+        paragraph.add_run(parts[0])
+        add_page_number(paragraph)
+        paragraph.add_run(parts[1])
+    else:
+        paragraph.add_run(text)
+
+
+def add_footer_from_data(doc, element: dict):
+    """
+    根据element字典中的数据，在文档中添加页脚。
+
+    Args:
+        doc: The python-docx Document object.
+        element (dict): 包含页脚数据的字典。
+    """
+    properties = element.get("properties", {})
+    text = properties.get("text", "")
+
+    section = doc.sections[0]
+    footer = section.footer
+    paragraph = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+    paragraph.clear()
+
+    # 设置对齐
+    align_str = properties.get('alignment', 'center')
+    paragraph.alignment = ALIGNMENT_MAP.get(align_str.lower(), WD_ALIGN_PARAGRAPH.CENTER)
+
+    # 添加内容，并处理页码占位符
+    if '{PAGE_NUM}' in text:
+        parts = text.split('{PAGE_NUM}')
+        paragraph.add_run(parts[0])
+        add_page_number(paragraph)
+        paragraph.add_run(parts[1])
+    else:
+        paragraph.add_run(text)
+
 def create_document(data: dict):
     """
         根据传入的数据字典，创建一个Word文档对象。
@@ -199,8 +295,15 @@ def create_document(data: dict):
 
         elif element_type == "list":
             add_list_from_data(doc, element)
+
         elif element_type == "image":
             add_image_from_data(doc, element)
+
+        elif element_type == "header":
+            add_header_from_data(doc, element)
+
+        elif element_type == "footer":
+            add_footer_from_data(doc, element)
 
     return doc
 
