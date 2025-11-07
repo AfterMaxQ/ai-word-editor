@@ -345,6 +345,12 @@ def create_document(data: dict):
             properties = element.get('properties', {})
             if not isinstance(properties, dict):
                 properties = {}
+        # --- 新增的兼容逻辑 ---
+        elif element_type == 'heading':
+            print("警告：接收到不规范的 'heading' 类型，将作为二级标题处理。")
+            text = element.get('text', '')
+            doc.add_paragraph(text, style='Heading 2')
+        # --- 兼容逻辑结束 ---
 
             style = properties.get("style") if isinstance(properties, dict) else None
 
