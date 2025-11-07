@@ -47,28 +47,31 @@ def apply_paragraph_properties(paragraph, properties: dict):
             properties (dict): 包含格式定义的字典。
     """
     p_format = paragraph.paragraph_format
-
     # 设置首行缩进
-    if 'first_line_indent' in properties:
-        p_format.first_line_indent = Cm(properties['first_line_indent'])
+    indent_cm = properties.get('first_line_indent')
+    if indent_cm is not None:
+        p_format.first_line_indent = Cm(indent_cm)
 
     # --- 设置字体格式 (字体、字号等), 字体格式需要应用到段落内的Run上。---
     if paragraph.runs:
         font = paragraph.runs[0].font
+        font_name = properties.get('font_name')
         # 设置字体名称
-        if 'font_name' in properties:
-            font.name = properties['font_name']
+        if font_name:
+            font.name = font_name
             # 导入中文字体所需的包
             from docx.oxml.ns import qn
             # 设置中文字体 (东亚字体)
-            font.element.rPr.rFonts.set(qn('w:eastAsia'), properties['font_name'])
+            font.element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
 
         # 设置字体大小
-        if "font_size" in properties:
-            font.size = Pt(properties['font_size'])
+        font_size_pt = properties.get('font_size')
+        if font_size_pt is not None:
+            font.size = Pt(font_size_pt)
         #设置粗体
-        if 'bold' in properties:
-            font.bold = bool(properties['bold'])
+        is_bold = properties.get('bold')
+        if is_bold is not None:  # 可以是 True 或 False, 但不能是 None
+            font.bold = bool(is_bold)
 
 
 def add_table_from_data(doc, element: dict):
@@ -167,7 +170,7 @@ def add_image_from_data(doc, element: dict):
     try:
         doc.add_picture(path, width=width, height=height)
     except FileNotFoundError:
-        print(f"警告：图片文件未找到 -> {path}，跳过此图片。")
+        print(f"警告：图片文件未找到 -> {path} ，跳过此图片。")
     except Exception as e:
         # 捕获其他可能的错误，如文件格式不支持等
         print(f"警告：插入图片时发生错误 -> {path} ({e})，跳过此图片。")
@@ -277,6 +280,10 @@ def apply_page_setup(doc, page_setup_data: dict):
     orientation_str = page_setup_data.get('orientation')
     if orientation_str == 'landscape':
         section.orientation = WD_ORIENT.LANDSCAPE
+        # 手动交换页面宽高，确保设置生效
+        new_width, new_height = section.page_height, section.page_width
+        section.page_width = new_width
+        section.page_height = new_height
 
     # 设置页边距
     margins = page_setup_data.get('margins')
@@ -313,8 +320,18 @@ def create_document(data: dict):
     """
     doc = Document()
 
-    if "page_setup" in data:
-        apply_page_setup(doc, data['page_setup'])
+    # 之前: if 'page_setup' in data:
+    #         apply_page_setup(doc, data['page_setup'])
+
+    # 修改后: 变得更健壮，能处理两种可能的JSON结构
+    # 步骤 1: 查找页面设置数据
+    page_setup_data = data.get('page_setup')
+    if not page_setup_data:
+        page_setup_data = data.get('settings', {}).get('page_setup')
+
+    # 步骤 2: 如果找到了数据，就调用函数应用它
+    if page_setup_data:
+        apply_page_setup(doc, page_setup_data)
 
     if 'elements' not in data or not isinstance(data['elements'], list):
         print("错误：JSON数据中缺少'elements'列表。")
@@ -329,7 +346,7 @@ def create_document(data: dict):
             if not isinstance(properties, dict):
                 properties = {}
 
-            style = properties.get("style")
+            style = properties.get("style") if isinstance(properties, dict) else None
 
             if style and 'Heading' in style:
                 p = doc.add_paragraph(text, style=style)
