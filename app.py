@@ -1,4 +1,5 @@
 import streamlit as st
+import traceback
 from src.app_logic import generate_document_from_command
 
 # 设置页面标题和图标
@@ -19,7 +20,8 @@ if st.button("🚀 生成文档", type="primary"):
         # 使用 spinner 显示加载状态
         with st.spinner("🧠 AI正在思考，引擎正在构建，请稍候..."):
             try:
-                document_bytes = generate_document_from_command(user_command)
+                # 2. 接收两个返回值
+                document_bytes, json_str = generate_document_from_command(user_command)
                 if document_bytes:
                     st.success("🎉 文档生成成功！请点击下方按钮下载。")
 
@@ -30,9 +32,17 @@ if st.button("🚀 生成文档", type="primary"):
                         file_name="generate_document.docx",
                         mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
+                    # 3. 使用 st.expander 来显示AI生成的JSON
+                    with st.expander("查看AI生成的JSON结构 👀"):
+                        st.code(json_str, language="json")
                 else:
                     st.error("❌ 文档生成失败。请检查您的指令或Ollama服务是否正常运行。")
             except Exception as e:
                 st.error(f"发生错误：{e}")
+                # 使用 st.expander 来显示完整的错误堆栈
+                with st.expander("查看详细错误信息 🐛"):
+                    # 使用 traceback.format_exc() 获取完整的错误追踪信息
+                    error_traceback = traceback.format_exc()
+                    st.code(error_traceback, language="python")
     else:
         st.warning("请输入指令后再点击生成！")
