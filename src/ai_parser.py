@@ -9,15 +9,15 @@ import json
 OLLAMA_API_URL = "http://localhost:11434/api/chat"
 
 """
-NAME                 ID              SIZE      MODIFIED
-qwen2.5-coder:14b    9ec8897f747e    9.0 GB    4 minutes ago
-qwen2.5-coder:7b     dae161e27b0e    4.7 GB    14 minutes ago
-deepseek-r1:14b      c333b7232bdb    9.0 GB    2 hours ago
-deepseek-r1:7b       755ced02ce7b    4.7 GB    2 hours ago
-llama3:8b            365c0bd3c000    4.7 GB    16 hours ago
+    NAME                 ID              SIZE      MODIFIED
+    qwen2.5-coder:14b    9ec8897f747e    9.0 GB    4 minutes ago
+    qwen2.5-coder:7b     dae161e27b0e    4.7 GB    14 minutes ago
+    deepseek-r1:14b      c333b7232bdb    9.0 GB    2 hours ago
+    deepseek-r1:7b       755ced02ce7b    4.7 GB    2 hours ago
+    llama3:8b            365c0bd3c000    4.7 GB    16 hours ago
 """
 
-MODEL_NAME = "qwen2.5-coder:7b"
+MODEL_NAME = "qwen2.5-coder:14b"
 SYSTEM_PROMPT_FILE = "prompts/system_prompt.txt"
 
 def parse_natural_language_to_json(user_command: str) -> dict | None:

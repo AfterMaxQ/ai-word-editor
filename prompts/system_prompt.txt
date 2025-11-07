@@ -62,7 +62,7 @@ Your thought process MUST follow these steps before generating the final JSON:
     - `type`: "page_break"
     - This element has no properties. It simply forces the following content to start on a new page.
 
-8.  **Table of Contents Object (TOC)** (这是新增的)
+8.  **Table of Contents Object (TOC)** (
     - `type`: "toc"
     - `properties`: (Optional)
         - `title`: String, the title to display above the TOC, e.g., "目录" or "Contents".

@@ -322,49 +322,30 @@ def add_toc_from_data(doc, element: dict):
     """
     properties = element.get("properties", {})
 
-    # 1. 如果用户定义了标题，先添加标题
     title = properties.get('title')
     if title:
-        doc.add_paragraph(title, style='Heading 1')  # 目录标题通常也用大标题样式
+        doc.add_paragraph(title, style='Heading 1')
 
-    # 2. 创建一个段落，用于承载TOC域
     paragraph = doc.add_paragraph()
     run = paragraph.add_run()
 
-    # 3. 创建TOC的XML结构
-    # 创建 'begin' 标记
     fldChar_begin = OxmlElement('w:fldChar')
     fldChar_begin.set(qn('w:fldCharType'), 'begin')
 
-    # 创建指令文本 (instrText)
-    # TOC \o "1-3" \h \z \u 的含义:
-    # \o "1-3": 构建基于大纲级别1到3的目录 (即 Heading 1, 2, 3)
-    # \h: 将目录条目作为超链接
-    # \z: 在Web视图中隐藏制表符和页码
-    # \u: 使用应用于段落的格式
     instrText = OxmlElement('w:instrText')
     instrText.set(qn('xml:space'), 'preserve')
     instrText.text = r'TOC \o "1-3" \h \z \u'
 
-    # 创建 'separate' 标记 (可选，但推荐)
     fldChar_separate = OxmlElement('w:fldChar')
     fldChar_separate.set(qn('w:fldCharType'), 'separate')
 
-    # 创建 'end' 标记
     fldChar_end = OxmlElement('w:fldChar')
     fldChar_end.set(qn('w:fldCharType'), 'end')
 
-    # 4. 将所有XML元素添加到run中
     run._r.append(fldChar_begin)
     run._r.append(instrText)
     run._r.append(fldChar_separate)
-    # Word在打开时会自动在这里填充目录内容
     run._r.append(fldChar_end)
-
-    # 5. (关键步骤) 告知Word此域需要更新
-    # 插入一个 <w:dirty/> 标记
-    dirty = OxmlElement('w:dirty')
-    instrText.append(dirty)
 
 def create_document(data: dict):
     """
@@ -385,6 +366,19 @@ def create_document(data: dict):
     # 步骤 2: 如果找到了数据，就调用函数应用它
     if page_setup_data:
         apply_page_setup(doc, page_setup_data)
+
+    # --- ★ 新增：兼容处理顶级的 header/footer ★ ---
+    if 'header' in data and isinstance(data['header'], dict):
+        print("信息：检测到顶层 'header' 对象，将进行兼容处理。")
+        # 我们需要模拟一个 element 字典来调用现有函数
+        header_element = {'properties': data['header'].get('properties', {})}
+        add_header_from_data(doc, header_element)
+
+    if 'footer' in data and isinstance(data['footer'], dict):
+        print("信息：检测到顶层 'footer' 对象，将进行兼容处理。")
+        footer_element = {'properties': data['footer'].get('properties', {})}
+        add_footer_from_data(doc, footer_element)
+    # --- 新增逻辑结束 ---
 
     if 'elements' not in data or not isinstance(data['elements'], list):
         print("错误：JSON数据中缺少'elements'列表。")
@@ -418,7 +412,7 @@ def create_document(data: dict):
         elif element_type == "footer":
             add_footer_from_data(doc, element)
 
-        elif element_type == "page_breaker":
+        elif element_type == "page_breake":
             add_page_break_from_data(doc, element)
 
         # --- 新增的分支 ---
