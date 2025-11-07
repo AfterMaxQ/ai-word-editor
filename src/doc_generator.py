@@ -74,6 +74,7 @@ def apply_paragraph_properties(paragraph, properties: dict):
             font.bold = bool(is_bold)
 
 
+
 def add_table_from_data(doc, element: dict):
     """
         根据element字典中的数据，在文档中添加一个表格。
@@ -304,6 +305,67 @@ def apply_page_setup(doc, page_setup_data: dict):
             section.right_margin = Cm(right_cm)
 
 
+def add_page_break_from_data(doc, element: dict):
+    """
+    在文档中添加一个分页符。
+
+    Args:
+        doc: The python-docx Document object.
+        element (dict): 包含分页符数据的字典 (虽然此元素为空)。
+    """
+    doc.add_page_break()
+
+def add_toc_from_data(doc, element: dict):
+    """
+    在文档中添加一个目录（TOC）。
+    这需要直接操作底层的OXML来创建一个复杂的域。
+    """
+    properties = element.get("properties", {})
+
+    # 1. 如果用户定义了标题，先添加标题
+    title = properties.get('title')
+    if title:
+        doc.add_paragraph(title, style='Heading 1')  # 目录标题通常也用大标题样式
+
+    # 2. 创建一个段落，用于承载TOC域
+    paragraph = doc.add_paragraph()
+    run = paragraph.add_run()
+
+    # 3. 创建TOC的XML结构
+    # 创建 'begin' 标记
+    fldChar_begin = OxmlElement('w:fldChar')
+    fldChar_begin.set(qn('w:fldCharType'), 'begin')
+
+    # 创建指令文本 (instrText)
+    # TOC \o "1-3" \h \z \u 的含义:
+    # \o "1-3": 构建基于大纲级别1到3的目录 (即 Heading 1, 2, 3)
+    # \h: 将目录条目作为超链接
+    # \z: 在Web视图中隐藏制表符和页码
+    # \u: 使用应用于段落的格式
+    instrText = OxmlElement('w:instrText')
+    instrText.set(qn('xml:space'), 'preserve')
+    instrText.text = r'TOC \o "1-3" \h \z \u'
+
+    # 创建 'separate' 标记 (可选，但推荐)
+    fldChar_separate = OxmlElement('w:fldChar')
+    fldChar_separate.set(qn('w:fldCharType'), 'separate')
+
+    # 创建 'end' 标记
+    fldChar_end = OxmlElement('w:fldChar')
+    fldChar_end.set(qn('w:fldCharType'), 'end')
+
+    # 4. 将所有XML元素添加到run中
+    run._r.append(fldChar_begin)
+    run._r.append(instrText)
+    run._r.append(fldChar_separate)
+    # Word在打开时会自动在这里填充目录内容
+    run._r.append(fldChar_end)
+
+    # 5. (关键步骤) 告知Word此域需要更新
+    # 插入一个 <w:dirty/> 标记
+    dirty = OxmlElement('w:dirty')
+    instrText.append(dirty)
+
 def create_document(data: dict):
     """
         根据传入的数据字典，创建一个Word文档对象。
@@ -355,6 +417,13 @@ def create_document(data: dict):
 
         elif element_type == "footer":
             add_footer_from_data(doc, element)
+
+        elif element_type == "page_breaker":
+            add_page_break_from_data(doc, element)
+
+        # --- 新增的分支 ---
+        elif element_type == "toc":
+            add_toc_from_data(doc, element)
 
         # 兼容 AI 错误地生成 "heading" 类型 (优雅降级处理)
         elif element_type == 'heading':

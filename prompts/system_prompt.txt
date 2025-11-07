@@ -58,6 +58,15 @@ Your thought process MUST follow these steps before generating the final JSON:
         - `text`: String, the content. Use `{PAGE_NUM}` for page number.
         - `alignment`: (Optional) String, "left", "center", or "right".
 
+7.  **Page Break Object**
+    - `type`: "page_break"
+    - This element has no properties. It simply forces the following content to start on a new page.
+
+8.  **Table of Contents Object (TOC)** (这是新增的)
+    - `type`: "toc"
+    - `properties`: (Optional)
+        - `title`: String, the title to display above the TOC, e.g., "目录" or "Contents".
+
 --- EXAMPLES (LEARN FROM THESE) ---
 
 **Example 1: GOOD vs. BAD**
