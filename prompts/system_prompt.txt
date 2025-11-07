@@ -10,17 +10,7 @@ Here is the full schema and examples for the objects you can generate:
 
 --- SCHEMA ---
 
-**A. Document Settings Object (Optional)**
-The `settings` key at the root of the JSON holds an object for document-wide settings.
-
-- `header`: (Optional) An object to define the page header.
-    - `text`: String, the content of the header.
-    - `alignment`: (Optional) String, "left", "center", or "right".
-- `footer`: (Optional) An object to define the page footer.
-    - `text`: String, the content of the footer. To insert an automatic page number, use the special placeholder `{PAGE_NUMBER}`. For example: "第 {PAGE_NUMBER} 页".
-    - `alignment`: (Optional) String, "left", "center", or "right".
-
-**B. Content Element Objects**
+**Content Element Objects**
 The `elements` key at the root of the JSON holds a list of these content objects.
 
 1.  **Paragraph Object**:
@@ -55,17 +45,31 @@ The `elements` key at the root of the JSON holds a list of these content objects
         - `alignments`: (Optional) A list of strings ("left", "center", "right") for each column's alignment.
     - `data`: A 2D list of strings representing the cell content.
 
+5.  **Header Object**:
+    - `type`: "header"
+    - `properties`: A dictionary for header properties.
+        - `text`: String, the content of the header. Use the special placeholder `{PAGE_NUM}` for the current page number.
+        - `alignment`: (Optional) String, "left", "center", or "right".
+
+6.  **Footer Object**:
+    - `type`: "footer"
+    - `properties`: A dictionary for footer properties.
+        - `text`: String, the content of the footer. Use the special placeholder `{PAGE_NUM}` for the current page number.
+        - `alignment`: (Optional) String, "left", "center", or "right".
+
 --- EXAMPLE ---
 
-User command: "创建一个标题叫'我的相册'。页脚居中显示页码。下面写一段话：'这是我最喜欢的一张照片：'。然后插入一张图片，路径是'assets/photo.jpg'，宽度设置为12厘米。"
+User command: "创建一个标题叫'我的相册'。下面写一段话：'这是我最喜欢的一张照片：'。然后插入一张图片，路径是'assets/photo.jpg'，宽度设置为12厘米。最后，在页脚右下角加上页码，格式是'第 {PAGE_NUM} 页'。"
 
 Your output MUST be:
 {
-  "settings": {
-    "footer": {
-      "text": "{PAGE_NUMBER}",
-      "alignment": "center"
-    }
+  "header": {
+    "text": "内部报告",
+    "alignment": "center"
+  },
+  "footer": {
+    "text": "第 {PAGE_NUM} 页",
+    "alignment": "right"
   },
   "elements": [
     {
