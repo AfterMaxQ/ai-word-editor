@@ -2,6 +2,29 @@ import io
 import json
 from src.ai_parser import parse_natural_language_to_json
 from src.doc_generator import create_document
+from jsonschema import validate, ValidationError
+
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "page_setup": {"type": "object"},
+        "elements": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["paragraph", "list", "image", "table", "header", "footer"]},
+                    "properties": {"type": "object"},
+                    "text": {"type": "string"},
+                    "items": {"type": "array", "items": {"type": "string"}},
+                    "data": {"type": "array"}
+                },
+                "required": ["type"]
+            }
+        }
+    },
+    "required": ["elements"]
+}
 
 # 2. 修改函数签名和返回类型提示
 def generate_document_from_command(user_command: str) -> tuple[bytes | None, str | None]:
