@@ -19,6 +19,9 @@ from docx.enum.section import WD_ORIENT
 from docx.shared import RGBColor
 from .ai_parser import translate_latex_to_omml_llm
 from .latex_converter import latex_to_omml
+from docx.enum.text import WD_BREAK
+from docx.shared import Pt
+
 
 # 定义一个从字符串到docx枚举的映射字典
 ALIGNMENT_MAP = {
@@ -209,7 +212,7 @@ def add_page_number(paragraph):
     run._r.append(instrText)
     run._r.append(fldChar_end)
 
-def add_header_from_data(doc, element: dict):
+def add_header_from_data(doc, element: dict, section):
     """
         根据element字典中的数据，在文档中添加页眉。
 
@@ -220,7 +223,6 @@ def add_header_from_data(doc, element: dict):
     properties = element.get("properties", {})
     text = properties.get("text", "")
 
-    section = doc.sections[0]
     header = section.header
 
     paragraph = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
@@ -239,7 +241,7 @@ def add_header_from_data(doc, element: dict):
         paragraph.add_run(text)
 
 
-def add_footer_from_data(doc, element: dict):
+def add_footer_from_data(doc, element: dict, section):
     """
     根据element字典中的数据，在文档中添加页脚。
 
@@ -250,7 +252,6 @@ def add_footer_from_data(doc, element: dict):
     properties = element.get("properties", {})
     text = properties.get("text", "")
 
-    section = doc.sections[0]
     footer = section.footer
     paragraph = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
     paragraph.clear()
@@ -314,6 +315,29 @@ def apply_page_setup(doc, page_setup_data: dict):
         if right_cm is not None:
             section.right_margin = Cm(right_cm)
 
+def apply_section_properties(section, section_data: dict):
+    """
+    根据 section_data 字典中的数据，应用节的属性（如分栏）。
+    """
+    properties = section_data.get('properties', {})
+    if not properties:
+        return
+
+    sectPr = section._sectPr
+
+    existing_cols = sectPr.find(qn('w:cols'))
+    if existing_cols is not None:
+        sectPr.remove(existing_cols)
+    # 设置分栏
+    columns = properties.get('columns')
+    if columns and columns > 1:
+        # 创建 <w:cols> 元素
+        cols = OxmlElement('w:cols')
+        cols.set(qn('w:num'), str(columns))
+        # 将 <w:cols> 添加到 <w:sectPr> 中
+        sectPr.append(cols)
+
+
 
 def add_page_break_from_data(doc, element: dict):
     """
@@ -324,6 +348,14 @@ def add_page_break_from_data(doc, element: dict):
         element (dict): 包含分页符数据的字典 (虽然此元素为空)。
     """
     doc.add_page_break()
+
+def add_column_break_from_data(doc, element: dict):
+    """
+    在文档中添加一个分栏符。
+    """
+    # 分栏符必须添加到一个段落中
+    p = doc.add_paragraph()
+    p.add_run().add_break(WD_BREAK.COLUMN)
 
 def add_toc_from_data(doc, element: dict):
     """
@@ -427,60 +459,80 @@ def get_formula_xml_and_placeholder(element: dict) -> tuple[str | None, str | No
 
 def create_document(data: dict) -> tuple[bytes | None, str | None]:
     """
-    使用“占位符与健壮XML注入”两阶段方法，根据经过验证的JSON数据创建Word文档。
-    这是文档生成引擎的最终实现，它通过彻底分离高层API操作和底层XML注入，
-    从根本上解决了所有“文件损坏”问题，是目前最健壮的方案。
+    根据以“节”为单位的、经过验证的JSON数据创建Word文档。
+    这是文档生成引擎的核心，支持多节和节级属性（如分栏）。
     """
     doc = Document()
     formulas_to_inject = {}
 
     # --- 阶段一: 使用 python-docx 生成带占位符的草稿文档 ---
+    # 1. 应用全局页面设置 (只会影响第一节)
     page_setup_data = data.get('page_setup', {})
-    elements = data.get('elements', [])
-
     if page_setup_data:
         apply_page_setup(doc, page_setup_data)
 
-    for element in elements:
-        element_type = element.get('type')
-        if element_type == "formula":
-            placeholder, omml_xml = get_formula_xml_and_placeholder(element)
-            if placeholder and omml_xml:
-                p = doc.add_paragraph()
-                p.add_run(placeholder)
-                formulas_to_inject[placeholder] = omml_xml
-        # ... (其他 element_type 的处理保持不变)
-        elif element_type == "header":
-            add_header_from_data(doc, element)
-        elif element_type == "footer":
-            add_footer_from_data(doc, element)
-        elif element_type == 'paragraph':
-            text = element.get('text', '')
-            properties = element.get('properties', {})
-            style = properties.get("style") if isinstance(properties, dict) else None
-            p = doc.add_paragraph(text, style=style)
-            if isinstance(properties, dict): apply_paragraph_properties(p, properties)
-        elif element_type == "table":
-            add_table_from_data(doc, element)
-        elif element_type == "list":
-            add_list_from_data(doc, element)
-        elif element_type == "image":
-            add_image_from_data(doc, element)
-        elif element_type == "page_break":
-            add_page_break_from_data(doc, element)
-        elif element_type == "toc":
-            add_toc_from_data(doc, element)
+    sections_data = data.get('sections', [])
 
+    # 2. 遍历所有节
+    for i, section_data in enumerate(sections_data):
+        # 获取当前的节对象
+        if i == 0:
+            # 对于第一个节，我们直接使用文档默认创建的节
+            section = doc.sections[0]
+        else:
+            # 对于后续的节，我们必须创建一个新的节
+            # WD_SECTION_START.NEW_PAGE 是最常用的分节方式
+            from docx.enum.section import WD_SECTION_START
+            section = doc.add_section(WD_SECTION_START.CONTINUOUS)
+
+        # 3. 应用本节的特定属性 (例如，分栏)
+        apply_section_properties(section, section_data)
+
+        # 4. 遍历并处理本节内的所有元素
+        elements = section_data.get('elements', [])
+        for element in elements:
+            element_type = element.get('type')
+
+            # ★★★ 重要: 页眉/页脚是节的属性, 需要传递 section 对象
+            if element_type == "header":
+                add_header_from_data(doc, element, section)  # 需要修改函数签名
+            elif element_type == "footer":
+                add_footer_from_data(doc, element, section)  # 需要修改函数签名
+            elif element_type == "formula":
+                placeholder, omml_xml = get_formula_xml_and_placeholder(element)
+                if placeholder and omml_xml:
+                    p = doc.add_paragraph()
+                    p.add_run(placeholder)
+                    formulas_to_inject[placeholder] = omml_xml
+            elif element_type == 'paragraph':
+                text = element.get('text', '')
+                properties = element.get('properties', {})
+                style = properties.get("style") if isinstance(properties, dict) else None
+                p = doc.add_paragraph(text, style=style)
+                if isinstance(properties, dict): apply_paragraph_properties(p, properties)
+            elif element_type == "table":
+                add_table_from_data(doc, element)
+            elif element_type == "list":
+                add_list_from_data(doc, element)
+            elif element_type == "image":
+                add_image_from_data(doc, element)
+            elif element_type == "page_break":
+                add_page_break_from_data(doc, element)
+            elif element_type == "column_break":
+                add_column_break_from_data(doc, element)
+            elif element_type == "toc":
+                add_toc_from_data(doc, element)
+
+    # --- 阶段二: XML后处理 (与之前完全相同) ---
     if not formulas_to_inject:
-        # 如果没有公式，直接保存并返回
         draft_stream = io.BytesIO()
         doc.save(draft_stream)
         draft_stream.seek(0)
         final_xml_body = etree.tostring(doc.element.body, pretty_print=True, encoding='unicode')
         return draft_stream.getvalue(), final_xml_body
 
-    # --- 阶段二: 终极版后处理 (使用lxml树操作) ---
     print("\n--- 开始XML后处理阶段 ---")
+    # ... (后续的XML注入代码保持不变)
     draft_stream = io.BytesIO()
     doc.save(draft_stream)
     draft_stream.seek(0)
@@ -497,49 +549,38 @@ def create_document(data: dict) -> tuple[bytes | None, str | None]:
                 root = etree.fromstring(content)
                 body = root.find(qn('w:body'))
 
-                # ★★★ 这是核心逻辑修正点 ★★★
-                # 我们不再直接替换 <w:p>，而是修改其内容
                 paragraphs = body.findall('.//' + qn('w:p'))
                 for p in paragraphs:
-                    # 获取段落内所有文本，这是最可靠的比较方法
                     placeholder_text = p.xpath("string(.)").strip()
 
                     if placeholder_text in formulas_to_inject:
                         real_xml_str = formulas_to_inject[placeholder_text]
                         print(f"  > 找到占位符: '{placeholder_text}'")
                         try:
-                            # 将待注入的XML字符串解析为lxml元素
                             new_content_element = etree.fromstring(real_xml_str)
 
-                            # 清空占位符段落<w:p>内的所有内容 (即所有<w:r>元素)
                             for child in list(p):
                                 p.remove(child)
 
-                            # 如果注入的是数学段落，我们需要提取其内容(<m:oMath>)
                             if new_content_element.tag == qn('m:oMathPara'):
-                                # 将<m:oMathPara>的属性(如居中)复制到<w:p>的属性中
                                 para_props = new_content_element.find(qn('m:oMathParaPr'))
                                 if para_props is not None:
-                                    # 创建或获取<w:pPr>
                                     pPr = p.find(qn('w:pPr'))
                                     if pPr is None:
                                         pPr = OxmlElement('w:pPr')
                                         p.insert(0, pPr)
-                                    # 复制对齐属性
                                     jc = para_props.find(qn('m:jc'))
                                     if jc is not None:
                                         new_jc = OxmlElement('w:jc')
                                         new_jc.set(qn('w:val'), jc.get(qn('m:val')))
                                         pPr.append(new_jc)
 
-                                # 提取<m:oMath>元素并注入
                                 oMath = new_content_element.find(qn('m:oMath'))
                                 if oMath is not None:
                                     p.append(oMath)
                                     print(f"    - 成功将 <m:oMath> 注入到 <w:p> 中。")
 
-                            else:  # 如果注入的是错误信息(已经是<w:p>格式)
-                                # 提取其内容(<w:r>)并注入
+                            else:
                                 for run in new_content_element.findall('.//' + qn('w:r')):
                                     p.append(run)
                                 print(f"    - 成功将错误提示 <w:r> 注入到 <w:p> 中。")

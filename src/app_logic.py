@@ -9,26 +9,41 @@ SCHEMA = {
     "type": "object",
     "properties": {
         "page_setup": {"type": "object"},
-        "elements": {
+        "sections": {
             "type": "array",
+            "minItems": 1,
             "items": {
                 "type": "object",
                 "properties": {
-                    # ★ 核心约束：严格限制type的取值 ★
-                    "type": {
-                        "type": "string",
-                        "enum": ["paragraph", "list", "image", "table", "header", "footer", "page_break", "toc", "formula"]
+                    "properties": {
+                        "type": "object",
+                        "properties": {
+                            "columns": {"type": "number", "minimum": 1}
+                        }
                     },
-                    "properties": {"type": "object"},
-                    "text": {"type": "string"},
-                    "items": {"type": "array", "items": {"type": "string"}},
-                    "data": {"type": "array"}
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "enum": ["paragraph", "list", "image", "table", "header", "footer", "page_break", "toc", "formula", "column_break"]
+                                },
+                                "properties": {"type": "object"},
+                                "text": {"type": "string"},
+                                "items": {"type": "array", "items": {"type": "string"}},
+                                "data": {"type": "array"}
+                            },
+                            "required": ["type"]
+                        }
+                    }
                 },
-                "required": ["type"]
+                "required": ["elements"]
             }
         }
     },
-    "required": ["elements"]
+    "required": ["sections"]
 }
 
 # 2. 修改函数签名和返回类型提示

@@ -6,6 +6,18 @@ import re
 from lxml import etree
 import math
 
+"""
+    NAME                 ID              SIZE      MODIFIED
+    gpt-oss:120b-cloud    569662207105    -         20 minutes ago
+    gpt-oss:20b           17052f91a42e    13 GB     24 minutes ago
+    qwen3-vl:8b           901cae732162    6.1 GB    35 minutes ago
+    qwen3-vl:4b           1343d82ebee3    3.3 GB    45 minutes ago
+    qwen2.5-coder:14b     9ec8897f747e    9.0 GB    30 hours ago
+    qwen2.5-coder:7b      dae161e27b0e    4.7 GB    30 hours ago
+    deepseek-r1:14b       c333b7232bdb    9.0 GB    32 hours ago
+    deepseek-r1:7b        755ced02ce7b    4.7 GB    32 hours ago
+    llama3:8b             365c0bd3c000    4.7 GB    46 hours ago
+"""
 # --- 常量定义部分保持不变 ---
 OLLAMA_API_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "qwen2.5-coder:14b"
@@ -40,7 +52,7 @@ Alignment: center
     }
 
     try:
-        response = requests.post(OLLAMA_API_URL, json=payload, timeout=60)
+        response = requests.post(OLLAMA_API_URL, json=payload, timeout=300)
         response.raise_for_status()
         response_data = response.json()
         omml_xml_string = response_data.get('message', {}).get('content')
@@ -108,8 +120,6 @@ def split_command_into_chunks(user_command: str, max_chunks: int = 5) -> tuple[l
 
     return final_chunks, "\n".join(log_messages)
 
-
-# ★★★ 已添加详细控制台日志 ★★★
 def parse_natural_language_to_json(user_command: str) -> tuple[dict | None, str]:
     """
     将用户的自然语言指令分块发送给LLM，并返回最终的JSON和详细的处理日志。
@@ -126,7 +136,7 @@ def parse_natural_language_to_json(user_command: str) -> tuple[dict | None, str]
     chunks, split_log = split_command_into_chunks(user_command, max_chunks=5)
     log_messages.append(split_log)
 
-    aggregated_document_data = {"elements": []}
+    aggregated_document_data = {"sections": []}
 
     print("=" * 20 + " 2. 开始循环处理任务块 " + "=" * 20)
     log_messages.append(f"\n--- 开始逐一调用AI解析器处理 {len(chunks)} 个任务块 ---")
@@ -139,7 +149,7 @@ def parse_natural_language_to_json(user_command: str) -> tuple[dict | None, str]
         log_messages.append(f"📄 指令内容:\n---\n{chunk}\n---")
 
         # 构建上下文感知的 Prompt
-        context_summary = f"So far, {len(aggregated_document_data.get('elements', []))} elements have been generated."
+        context_summary = f"So far, {len(aggregated_document_data.get('sections', []))} sections have been generated."
         chunk_user_prompt = f"""
         This is part {i + 1} of a multi-part command.
         The user's command for THIS part is: "{chunk}"
@@ -161,7 +171,7 @@ def parse_natural_language_to_json(user_command: str) -> tuple[dict | None, str]
 
         try:
             print("[控制台] 正在向 Ollama API 发送请求...")
-            response = requests.post(OLLAMA_API_URL, json=payload, timeout=60)
+            response = requests.post(OLLAMA_API_URL, json=payload, timeout=300)
             response.raise_for_status()
             response_data = response.json()
             message_content = response_data.get('message', {}).get('content')
@@ -180,14 +190,14 @@ def parse_natural_language_to_json(user_command: str) -> tuple[dict | None, str]
             log_messages.append(f"🤖 AI为块 {i + 1} 返回的JSON片段:")
             log_messages.append(json.dumps(chunk_json, indent=2, ensure_ascii=False))
 
-            # 聚合 JSON
-            new_elements = chunk_json.get('elements', [])
-            if new_elements:
-                if 'elements' not in aggregated_document_data:
-                    aggregated_document_data['elements'] = []
-                aggregated_document_data['elements'].extend(new_elements)
-                print(f"[控制台] 成功聚合 {len(new_elements)} 个新元素。")
-                log_messages.append(f"✅ 成功聚合 {len(new_elements)} 个新元素。")
+            # 重写聚合逻辑以处理 sections 数组
+            new_sections = chunk_json.get('sections', [])
+            if new_sections:
+                if 'sections' not in aggregated_document_data:
+                    aggregated_document_data['sections'] = []
+                aggregated_document_data['sections'].extend(new_sections)
+                print(f"[控制台] 成功聚合 {len(new_sections)} 个新节(section)。")
+                log_messages.append(f"✅ 成功聚合 {len(new_sections)} 个新节(section)。")
 
             if 'page_setup' in chunk_json:
                 if 'page_setup' not in aggregated_document_data:
