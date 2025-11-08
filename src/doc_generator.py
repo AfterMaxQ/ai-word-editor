@@ -1,6 +1,11 @@
 # src/doc_generator.py
 
 import json
+import uuid
+import zipfile
+
+import io
+from lxml import etree
 import re
 import sys
 from docx import Document
@@ -10,10 +15,10 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.enum.section import WD_ORIENT
-from .latex_converter import latex_to_omml
-
 
 from docx.shared import RGBColor
+from .ai_parser import translate_latex_to_omml_llm
+from .latex_converter import latex_to_omml
 
 # 定义一个从字符串到docx枚举的映射字典
 ALIGNMENT_MAP = {
@@ -353,126 +358,204 @@ def add_toc_from_data(doc, element: dict):
     run._r.append(fldChar_end)
 
 
-def add_formula_from_data(doc, element: dict):
+# ★★★ 新增核心函数: 三层防御公式处理器 ★★★
+def get_formula_xml_and_placeholder(element: dict) -> tuple[str | None, str | None]:
     """
-    在文档中添加一个由LaTeX生成的原生Word公式。
+    ★★★【三层防御公式处理器】★★★
+    1. 尝试本地转换器 (高可靠性)
+    2. 若失败，回退到 LLM (高覆盖性)
+    3. 对所有输出进行零信任验证
+    4. 若全部失败，生成一个格式化的错误信息
     """
-    properties = element.get("properties", {})
-    latex_text = properties.get("text")
+    latex_text = element.get("properties", {}).get("text")
+    if not latex_text: return None, None
 
-    if not latex_text:
-        print("警告：公式元素缺少'text'属性。")
-        return
+    placeholder = f"__FORMULA_{uuid.uuid4().hex}__"
+    omml_str = None
 
-    # 1. 调用转换器获取OMML段落
-    omml_para_element = latex_to_omml(latex_text)
+    # --- 防御层 1: 本地转换器 ---
+    print(f"⚙️ 尝试使用本地解析器处理: {latex_text}")
+    try:
+        omml_elem = latex_to_omml(latex_text)
+        if omml_elem is not None:
+            # 零信任验证: 确保生成的XML是有效的
+            temp_str = etree.tostring(omml_elem, encoding='unicode')
+            etree.fromstring(temp_str)  # 重新解析以确保有效性
+            if omml_elem.tag == qn('m:oMathPara'):
+                print("✅ 本地解析器成功并验证通过。")
+                omml_str = temp_str
+    except Exception as e:
+        print(f"⚠️ 本地解析器失败: {e}。回退到 LLM...")
+        omml_str = None
 
-    if omml_para_element is not None:
-        # --- ★ 核心修复：替换段落内容 ★ ---
-        # 创建一个空的段落，然后用我们生成的OMML段落替换它的整个XML内容
-        p = doc.add_paragraph()
-        p._element.getparent().replace(p._element, omml_para_element)
+    # --- 防御层 2: LLM 兜底 ---
+    if not omml_str:
+        llm_xml = translate_latex_to_omml_llm(latex_text)
+        if llm_xml:
+            try:
+                # 零信任验证
+                root = etree.fromstring(llm_xml)
+                if root.tag == qn('m:oMathPara') and root.find(qn('m:oMath')) is not None:
+                    print("✅ LLM成功并验证通过。")
+                    omml_str = llm_xml
+                else:
+                    print("❌ LLM返回的XML结构不符合规范 (缺少<m:oMathPara>或<m:oMath>)。")
+            except etree.XMLSyntaxError as e:
+                print(f"❌ LLM返回的不是有效的XML: {e}")
 
-        # 应用我们在JSON中指定的、更优先的对齐方式
-        align_str = properties.get('alignment')
-        if align_str:
-            alignment_enum = ALIGNMENT_MAP.get(align_str.lower())
-            if alignment_enum is not None:
-                # 注意：现在我们需要从 omml_para_element 中找到段落属性并设置它
-                # 但更简单、更可靠的方式是直接操作 p 的 paragraph_format
-                # 在替换之前获取段落对象
-                new_p = doc.paragraphs[-1]
-                new_p.alignment = alignment_enum
+    # --- 防御层 3: 最终错误提示 ---
+    if omml_str:
+        return placeholder, omml_str
     else:
-        # --- 失败回退路径 (不变) ---
-        error_text = f"[公式渲染失败: 引擎不支持以下LaTeX语法: '{latex_text}']"
-        p = doc.add_paragraph()
-        run = p.add_run(error_text)
-        font = run.font
-        font.color.rgb = RGBColor(255, 0, 0)
-        print(f"错误: {error_text}")
+        print(f"❌ 所有转换方法均失败，生成错误提示: '{latex_text}'")
+        # 创建一个有效的 <m:oMathPara> XML元素，其中包含红色错误文本
+        # 这确保了即使转换失败，注入的XML也是有效的，不会损坏文档
+        p = OxmlElement('w:p')
+        r = OxmlElement('w:r')
+        rPr = OxmlElement('w:rPr')
+        color = OxmlElement('w:color');
+        color.set(qn('w:val'), 'FF0000')  # 红色
+        rPr.append(color)
+        r.append(rPr)
+        t = OxmlElement('w:t');
+        t.text = f"[公式渲染失败: '{latex_text}']"
+        r.append(t)
+        p.append(r)
+
+        return placeholder, etree.tostring(p, encoding='unicode')
 
 
-def create_document(data: dict):
+def create_document(data: dict) -> tuple[bytes | None, str | None]:
     """
-        根据传入的数据字典，创建一个Word文档对象。
-
-        Args:
-            data (dict): 从JSON文件加载的文档结构数据。
-
-        Returns:
-            Document: 一个构建好的python-docx的Document对象。
+    使用“占位符与健壮XML注入”两阶段方法，根据经过验证的JSON数据创建Word文档。
+    这是文档生成引擎的最终实现，它通过彻底分离高层API操作和底层XML注入，
+    从根本上解决了所有“文件损坏”问题，是目前最健壮的方案。
     """
     doc = Document()
-    # 步骤 1: 查找页面设置数据
-    page_setup_data = data.get('page_setup')
-    if not page_setup_data:
-        page_setup_data = data.get('settings', {}).get('page_setup')
+    formulas_to_inject = {}
 
-    # 步骤 2: 如果找到了数据，就调用函数应用它
+    # --- 阶段一: 使用 python-docx 生成带占位符的草稿文档 ---
+    page_setup_data = data.get('page_setup', {})
+    elements = data.get('elements', [])
+
     if page_setup_data:
         apply_page_setup(doc, page_setup_data)
 
-    # --- ★ 新增：兼容处理顶级的 header/footer ★ ---
-    if 'header' in data and isinstance(data['header'], dict):
-        print("信息：检测到顶层 'header' 对象，将进行兼容处理。")
-        # 我们需要模拟一个 element 字典来调用现有函数
-        header_element = {'properties': data['header'].get('properties', {})}
-        add_header_from_data(doc, header_element)
-
-    if 'footer' in data and isinstance(data['footer'], dict):
-        print("信息：检测到顶层 'footer' 对象，将进行兼容处理。")
-        footer_element = {'properties': data['footer'].get('properties', {})}
-        add_footer_from_data(doc, footer_element)
-    # --- 新增逻辑结束 ---
-
-    if 'elements' not in data or not isinstance(data['elements'], list):
-        print("错误：JSON数据中缺少'elements'列表。")
-        return doc # 返回一个空文档
-
-    for element in data['elements']:
+    for element in elements:
         element_type = element.get('type')
-
-        if element.get('type')=='paragraph':
+        if element_type == "formula":
+            placeholder, omml_xml = get_formula_xml_and_placeholder(element)
+            if placeholder and omml_xml:
+                p = doc.add_paragraph()
+                p.add_run(placeholder)
+                formulas_to_inject[placeholder] = omml_xml
+        # ... (其他 element_type 的处理保持不变)
+        elif element_type == "header":
+            add_header_from_data(doc, element)
+        elif element_type == "footer":
+            add_footer_from_data(doc, element)
+        elif element_type == 'paragraph':
             text = element.get('text', '')
             properties = element.get('properties', {})
             style = properties.get("style") if isinstance(properties, dict) else None
-            # 创建段落，如果存在样式就立即应用
             p = doc.add_paragraph(text, style=style)
-            # 对于没有使用样式的段落，应用额外的属性
-            if not style and isinstance(properties, dict):
-                apply_paragraph_properties(p, properties)
-
+            if isinstance(properties, dict): apply_paragraph_properties(p, properties)
         elif element_type == "table":
             add_table_from_data(doc, element)
-
         elif element_type == "list":
             add_list_from_data(doc, element)
-
         elif element_type == "image":
             add_image_from_data(doc, element)
-
-        elif element_type == "header":
-            add_header_from_data(doc, element)
-
-        elif element_type == "footer":
-            add_footer_from_data(doc, element)
-
         elif element_type == "page_break":
             add_page_break_from_data(doc, element)
-
         elif element_type == "toc":
             add_toc_from_data(doc, element)
 
-        elif element_type == "formula":
-            add_formula_from_data(doc, element)
+    if not formulas_to_inject:
+        # 如果没有公式，直接保存并返回
+        draft_stream = io.BytesIO()
+        doc.save(draft_stream)
+        draft_stream.seek(0)
+        final_xml_body = etree.tostring(doc.element.body, pretty_print=True, encoding='unicode')
+        return draft_stream.getvalue(), final_xml_body
 
-        # 兼容 AI 错误地生成 "heading" 类型
-        elif element_type == 'heading':
-            print(f"警告：接收到不规范的 'heading' 类型 ({element.get('text', '')})，将作为二级标题处理。")
-            text = element.get('text', '')
-            doc.add_paragraph(text, style='Heading 2')
+    # --- 阶段二: 终极版后处理 (使用lxml树操作) ---
+    print("\n--- 开始XML后处理阶段 ---")
+    draft_stream = io.BytesIO()
+    doc.save(draft_stream)
+    draft_stream.seek(0)
 
-    return doc
+    final_stream = io.BytesIO()
+    diagnostic_xml = ""
+
+    with zipfile.ZipFile(draft_stream, 'r') as zin, zipfile.ZipFile(final_stream, 'w', zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            content = zin.read(item.filename)
+
+            if item.filename == 'word/document.xml':
+                print("  正在处理: word/document.xml")
+                root = etree.fromstring(content)
+                body = root.find(qn('w:body'))
+
+                # ★★★ 这是核心逻辑修正点 ★★★
+                # 我们不再直接替换 <w:p>，而是修改其内容
+                paragraphs = body.findall('.//' + qn('w:p'))
+                for p in paragraphs:
+                    # 获取段落内所有文本，这是最可靠的比较方法
+                    placeholder_text = p.xpath("string(.)").strip()
+
+                    if placeholder_text in formulas_to_inject:
+                        real_xml_str = formulas_to_inject[placeholder_text]
+                        print(f"  > 找到占位符: '{placeholder_text}'")
+                        try:
+                            # 将待注入的XML字符串解析为lxml元素
+                            new_content_element = etree.fromstring(real_xml_str)
+
+                            # 清空占位符段落<w:p>内的所有内容 (即所有<w:r>元素)
+                            for child in list(p):
+                                p.remove(child)
+
+                            # 如果注入的是数学段落，我们需要提取其内容(<m:oMath>)
+                            if new_content_element.tag == qn('m:oMathPara'):
+                                # 将<m:oMathPara>的属性(如居中)复制到<w:p>的属性中
+                                para_props = new_content_element.find(qn('m:oMathParaPr'))
+                                if para_props is not None:
+                                    # 创建或获取<w:pPr>
+                                    pPr = p.find(qn('w:pPr'))
+                                    if pPr is None:
+                                        pPr = OxmlElement('w:pPr')
+                                        p.insert(0, pPr)
+                                    # 复制对齐属性
+                                    jc = para_props.find(qn('m:jc'))
+                                    if jc is not None:
+                                        new_jc = OxmlElement('w:jc')
+                                        new_jc.set(qn('w:val'), jc.get(qn('m:val')))
+                                        pPr.append(new_jc)
+
+                                # 提取<m:oMath>元素并注入
+                                oMath = new_content_element.find(qn('m:oMath'))
+                                if oMath is not None:
+                                    p.append(oMath)
+                                    print(f"    - 成功将 <m:oMath> 注入到 <w:p> 中。")
+
+                            else:  # 如果注入的是错误信息(已经是<w:p>格式)
+                                # 提取其内容(<w:r>)并注入
+                                for run in new_content_element.findall('.//' + qn('w:r')):
+                                    p.append(run)
+                                print(f"    - 成功将错误提示 <w:r> 注入到 <w:p> 中。")
+
+                        except etree.XMLSyntaxError as e:
+                            print(f"  ❌ 严重错误: 无法解析待注入的XML，跳过: {e}")
+                            continue
+
+                final_xml_content = etree.tostring(root, encoding='utf-8', xml_declaration=True, standalone=True)
+                diagnostic_xml = etree.tostring(root, pretty_print=True, encoding='unicode')
+                zout.writestr(item, final_xml_content)
+            else:
+                zout.writestr(item, content)
+
+    print("--- XML后处理阶段完成 ---\n")
+    final_stream.seek(0)
+    return final_stream.getvalue(), diagnostic_xml
 
 

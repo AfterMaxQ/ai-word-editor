@@ -3,95 +3,151 @@
 import requests
 import json
 import re
+from lxml import etree
+import math
 
-# 定义Ollama API的地址和模型名称
+# --- 常量定义部分保持不变 ---
 OLLAMA_API_URL = "http://localhost:11434/api/chat"
-
-"""
-    NAME                 ID              SIZE      MODIFIED
-    qwen2.5-coder:14b    9ec8897f747e    9.0 GB    4 minutes ago
-    qwen2.5-coder:7b     dae161e27b0e    4.7 GB    14 minutes ago
-    deepseek-r1:14b      c333b7232bdb    9.0 GB    2 hours ago
-    deepseek-r1:7b       755ced02ce7b    4.7 GB    2 hours ago
-    llama3:8b            365c0bd3c000    4.7 GB    16 hours ago
-"""
-
-MODEL_NAME = "qwen2.5-coder:7b"
+MODEL_NAME = "qwen2.5-coder:14b"
 SYSTEM_PROMPT_FILE = "prompts/system_prompt.txt"
+LATEX_PROMPT_FILE = "prompts/prompt_for_latex_convert.txt"
 
-def split_command_into_chunks(user_command: str, max_chunks: int = 5):
+
+# --- translate_latex_to_omml_llm 函数保持不变 ---
+def translate_latex_to_omml_llm(latex_string: str) -> str | None:
+    # ... 此函数已有足够的 print 输出，无需修改 ...
+    print(f"🤖 尝试使用LLM转译LaTeX: {latex_string}")
+    try:
+        with open(LATEX_PROMPT_FILE, 'r', encoding='utf-8') as f:
+            system_prompt = f.read()
+    except FileNotFoundError:
+        print(f"❌ 致命错误: 无法找到LaTeX转换提示词文件 -> {LATEX_PROMPT_FILE}")
+        return None
+
+    user_prompt = f"""
+Convert the following LaTeX formula into a centered OMML `<m:oMathPara>` XML block.
+LaTeX Input: `{latex_string}`
+Alignment: center
+"""
+
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        "stream": False
+    }
+
+    try:
+        response = requests.post(OLLAMA_API_URL, json=payload, timeout=60)
+        response.raise_for_status()
+        response_data = response.json()
+        omml_xml_string = response_data.get('message', {}).get('content')
+
+        if not omml_xml_string:
+            print("❌ LLM返回内容为空。")
+            return None
+
+        try:
+            omml_xml_string = re.sub(r'^```xml\s*|\s*```$', '', omml_xml_string, flags=re.MULTILINE).strip()
+            etree.fromstring(omml_xml_string)
+            print("✅ LLM转译成功并已通过XML验证。")
+            return omml_xml_string
+        except etree.XMLSyntaxError as e:
+            print(f"❌ LLM返回的不是有效的XML，验证失败: {e}")
+            print(f"收到的内容: {omml_xml_string}")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"❌ 调用LLM进行公式转译失败: {e}")
+        return None
+
+
+# ★★★ 已添加详细控制台日志 ★★★
+def split_command_into_chunks(user_command: str, max_chunks: int = 5) -> tuple[list[str], str]:
     """
-        将用户的长指令分割成更小的、符合逻辑的块。
-
-        为什么这么做？
-        - 我们发现，一次性将一个非常长的指令（例如，包含10个步骤）交给一个7B大小的模型，
-          它很容易在生成JSON的过程中“忘记”前面的指令，或者最终的JSON结构会非常混乱。
-        - 通过将指令按自然语言的换行符（代表一个独立的步骤）分割，我们可以一次只让模型专注于一个子任务。
-          这就像我们指导新手一样，一步一步来，而不是一次性告诉他所有事情。
-
-        Args:
-            user_command (str): 用户的完整自然语言指令。
-            max_chunks (int): 为了防止指令被过度分割（例如，一个表格的每一行都被分开），
-                              我们设置一个最大分块数。超过这个数量，后面的内容会合并到最后一个块中。
-
-        Returns:
-            list[str]: 一个包含指令块字符串的列表。
-        """
-    # 1. 使用正则表达式按一个或多个换行符进行分割
-    lines = re.split(r'\n\s*\n*', user_command.strip())
-    # 2. 过滤掉所有仅包含空白字符的无效行
-    chunks = [chunk.strip() for chunk in lines if chunk.strip()]
-
-    # 3. 如果分割后的块数超过了最大限制
-    if len(chunks) > max_chunks:
-        print(f"警告：指令被分割成 {len(chunks)} 块，超过最大限制 {max_chunks}。")
-        # 将超出的部分合并到最后一个块中
-        last_valid_chunk = "\n".join(chunks[max_chunks - 1:])
-        chunks = chunks[:max_chunks - 1] + [last_valid_chunk]
-        print(f"已将指令合并为 {len(chunks)} 块进行处理。")
-
-    return chunks
-
-
-def parse_natural_language_to_json(user_command: str) -> dict | None:
+    【动态分片核心实现】
+    将用户的长指令分割成更小的、符合逻辑的任务块。
     """
-        将用户的自然语言指令发送给本地LLM，并解析返回的JSON。
-    此函数现在支持将长指令分块，以提高稳定性和处理复杂指令的能力。
+    log_messages = []
 
-    Args:
-        user_command (str): 用户的自然语言指令。
+    print("\n" + "=" * 20 + " 1. 开始智能指令分割 " + "=" * 20)
 
-    Returns:
-        dict | None: 解析成功则返回包含文档结构的字典，否则返回None。
+    # 粗分
+    logical_units = re.split(r'\n\s*\n+', user_command.strip())
+    logical_units = [unit.strip() for unit in logical_units if unit.strip()]
+    total_units = len(logical_units)
+
+    print(f"[控制台] 粗粒度分割：找到 {total_units} 个逻辑单元。")
+    log_messages.append(f"🧠 指令被初步分解为 {total_units} 个逻辑单元。")
+
+    if total_units <= max_chunks:
+        print(f"[控制台] 逻辑单元数 ({total_units}) <= 最大分块数 ({max_chunks})，无需合并。")
+        log_messages.append(f"  - 单元数 ({total_units}) 不超过最大分块数 ({max_chunks})，无需合并。")
+        print("=" * 62 + "\n")
+        return logical_units, "\n".join(log_messages)
+
+    # 精合
+    print(f"[控制台] 逻辑单元数 ({total_units}) > 最大分块数 ({max_chunks})，开始智能分组。")
+    log_messages.append(f"  - 单元数 ({total_units}) 超过最大分块数 ({max_chunks})，开始智能分组...")
+
+    units_per_chunk = math.ceil(total_units / max_chunks)
+    print(f"[控制台] 计算得出：每个任务块应包含约 {units_per_chunk} 个逻辑单元。")
+    log_messages.append(f"  - 计算得出：每个任务块应包含约 {units_per_chunk} 个逻辑单元。")
+
+    final_chunks = []
+    for i in range(0, total_units, units_per_chunk):
+        group = logical_units[i:i + units_per_chunk]
+        combined_chunk = "\n".join(group)
+        final_chunks.append(combined_chunk)
+
+    print(f"[控制台] 成功将 {total_units} 个逻辑单元合并为 {len(final_chunks)} 个最终任务块。")
+    log_messages.append(f"✅ 成功将 {total_units} 个逻辑单元合并为 {len(final_chunks)} 个最终任务块。")
+    print("=" * 62 + "\n")
+
+    return final_chunks, "\n".join(log_messages)
+
+
+# ★★★ 已添加详细控制台日志 ★★★
+def parse_natural_language_to_json(user_command: str) -> tuple[dict | None, str]:
     """
-
-    # 1.读取我们的“prompt”
+    将用户的自然语言指令分块发送给LLM，并返回最终的JSON和详细的处理日志。
+    """
+    log_messages = []
     try:
         with open(SYSTEM_PROMPT_FILE, 'r', encoding='utf-8') as f:
             system_prompt = f.read()
     except FileNotFoundError:
-        print(f"错误：系统提示文件未找到 -> {SYSTEM_PROMPT_FILE}")
-        return None
+        error_msg = f"❌ 错误：系统提示文件未找到 -> {SYSTEM_PROMPT_FILE}"
+        print(f"[控制台] {error_msg}")
+        return None, error_msg
 
-    # 2. 将用户的完整指令分割成多个块
-    chunks = split_command_into_chunks(user_command)
+    chunks, split_log = split_command_into_chunks(user_command, max_chunks=5)
+    log_messages.append(split_log)
 
-    # 初始化一个最终的JSON对象和所有元素的列表
-    aggregated_document_data = {
-        "elements": []
-    }
+    aggregated_document_data = {"elements": []}
 
-    print(f"🧠 指令已被分为 {len(chunks)} 个任务块，开始逐一调用AI解析器...")
+    print("=" * 20 + " 2. 开始循环处理任务块 " + "=" * 20)
+    log_messages.append(f"\n--- 开始逐一调用AI解析器处理 {len(chunks)} 个任务块 ---")
 
     for i, chunk in enumerate(chunks):
-        print(f"\n--- 正在处理第 {i + 1}/{len(chunks)} 个任务块 ---")
-        print(f"指令内容: \"{chunk}\"")
-        # 4. 为每个块构建特定的请求
+        print(f"\n--- [控制台] 正在处理第 {i + 1}/{len(chunks)} 个任务块 ---")
+        log_messages.append(f"\n--- 正在处理第 {i + 1}/{len(chunks)} 个任务块 ---")
+
+        print(f"[控制台] 任务块内容:\n---\n{chunk}\n---")
+        log_messages.append(f"📄 指令内容:\n---\n{chunk}\n---")
+
+        # 构建上下文感知的 Prompt
+        context_summary = f"So far, {len(aggregated_document_data.get('elements', []))} elements have been generated."
         chunk_user_prompt = f"""
         This is part {i + 1} of a multi-part command.
         The user's command for THIS part is: "{chunk}"
-        CONTEXT: So far, the following number of elements have been generated: {len(aggregated_document_data['elements'])}. 
+        CONTEXT: {context_summary}. 
         Please generate the JSON structure ONLY for the command in THIS part. Do not repeat or re-generate previous elements."""
+
+        print("[控制台] 为此任务块生成的 User Prompt:")
+        print(chunk_user_prompt)
 
         payload = {
             "model": MODEL_NAME,
@@ -103,67 +159,56 @@ def parse_natural_language_to_json(user_command: str) -> dict | None:
             "stream": False
         }
 
-        # 3. 发送HTTP POST请求
         try:
+            print("[控制台] 正在向 Ollama API 发送请求...")
             response = requests.post(OLLAMA_API_URL, json=payload, timeout=60)
-            response.raise_for_status() # 如果HTTP状态码是4xx或5xx，则抛出异常
-            # 解析返回的响应
+            response.raise_for_status()
             response_data = response.json()
             message_content = response_data.get('message', {}).get('content')
+            print("[控制台] 已收到 AI 响应。")
 
             if not message_content:
-                print(f"错误：第 {i + 1} 个块的AI响应中找不到内容。")
-                return None
+                error_msg = f"❌ 错误：第 {i + 1} 个块的AI响应中找不到内容。"
+                print(f"[控制台] {error_msg}")
+                log_messages.append(error_msg)
+                return None, "\n".join(log_messages)
 
-            # 解析当前块返回的JSON片段
             chunk_json = json.loads(message_content)
 
-            print(f"--- AI为块 {i + 1} 返回的JSON片段 ---")
+            print(f"[控制台] AI为块 {i + 1} 返回的JSON片段:")
             print(json.dumps(chunk_json, indent=2, ensure_ascii=False))
-            print("--------------------------------")
+            log_messages.append(f"🤖 AI为块 {i + 1} 返回的JSON片段:")
+            log_messages.append(json.dumps(chunk_json, indent=2, ensure_ascii=False))
 
-            # 6. JSON聚合：将新生成的元素合并到最终结果中
-            #    这是整个流程的关键一步，我们将所有“零件”组装成一个完整的产品。
+            # 聚合 JSON
             new_elements = chunk_json.get('elements', [])
             if new_elements:
+                if 'elements' not in aggregated_document_data:
+                    aggregated_document_data['elements'] = []
                 aggregated_document_data['elements'].extend(new_elements)
-                print(f"✅ 成功聚合 {len(new_elements)} 个新元素。")
+                print(f"[控制台] 成功聚合 {len(new_elements)} 个新元素。")
+                log_messages.append(f"✅ 成功聚合 {len(new_elements)} 个新元素。")
 
-            # 同时，检查是否有页面设置，并更新到主对象中
-            # 这允许用户在任何步骤中设置页面格式
             if 'page_setup' in chunk_json:
-                # 使用.update()可以合并字典，或添加新键
                 if 'page_setup' not in aggregated_document_data:
                     aggregated_document_data['page_setup'] = {}
                 aggregated_document_data['page_setup'].update(chunk_json['page_setup'])
-                print("✅ 已更新页面设置。")
-
+                print("[控制台] 已更新页面设置。")
+                log_messages.append("✅ 已更新页面设置。")
 
         except requests.exceptions.RequestException as e:
-            print(f"错误：在处理第 {i + 1} 个块时连接Ollama API失败 -> {e}")
-            return None
+            error_msg = f"❌ 错误：在处理第 {i + 1} 个块时连接Ollama API失败 -> {e}"
+            print(f"[控制台] {error_msg}")
+            log_messages.append(error_msg)
+            return None, "\n".join(log_messages)
         except json.JSONDecodeError as e:
-            print(f"错误：在处理第 {i + 1} 个块时AI返回的不是有效的JSON格式 -> {e}")
-            print(f"收到的内容: {message_content}")
-            return None
+            error_msg = f"❌ 错误：在处理第 {i + 1} 个块时AI返回的不是有效的JSON格式 -> {e}"
+            print(f"[控制台] {error_msg}")
+            log_messages.append(error_msg)
+            print(f"[控制台] 收到的原始响应内容: {message_content}")
+            log_messages.append(f"收到的内容: {message_content}")
+            return None, "\n".join(log_messages)
 
-    print("\n✅ 所有任务块处理完毕，AI解析成功！")
-    return aggregated_document_data
-
-
-
-# --- 测试代码 ---
-if __name__ == "__main__":
-
-    test_command = """
-    给我一个一级标题叫'销售报告'。
-    然后另起一段，内容是'这是第一季度的总结'，宋体小四，首行缩进。
-    最后，给我一个3x3的表格，带表头，内容是姓名、年龄、城市，张三、30、北京，李四、25、上海。第一列左对齐，后两列居中。
-    """
-
-    document_structure = parse_natural_language_to_json(test_command)
-    if document_structure:
-        print("\n--- 解析得到的JSON结构 ---")
-        print(json.dumps(document_structure, indent=2, ensure_ascii=False))
-
-
+    print("\n" + "=" * 20 + " 3. 所有任务块处理完毕 " + "=" * 20)
+    log_messages.append("\n✅ 所有任务块处理完毕，AI解析成功！")
+    return aggregated_document_data, "\n".join(log_messages)

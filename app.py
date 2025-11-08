@@ -21,7 +21,12 @@ if st.button("🚀 生成文档", type="primary"):
         with st.spinner("🧠 AI正在思考，引擎正在构建，请稍候..."):
             try:
                 # 2. 接收两个返回值
-                document_bytes, json_str = generate_document_from_command(user_command)
+                document_bytes, json_str, log_str = generate_document_from_command(user_command)
+                if log_str:
+                    with st.expander("查看AI处理日志 📝"):
+                        # 使用 st.code 可以更好地展示多行文本和保留格式
+                        st.code(log_str, language="log")
+
                 if document_bytes:
                     st.success("🎉 文档生成成功！请点击下方按钮下载。")
 
@@ -33,8 +38,9 @@ if st.button("🚀 生成文档", type="primary"):
                         mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
                     # 3. 使用 st.expander 来显示AI生成的JSON
-                    with st.expander("查看AI生成的JSON结构 👀"):
-                        st.code(json_str, language="json")
+                    if json_str:
+                        with st.expander("查看AI生成的最终JSON结构 👀"):
+                            st.code(json_str, language="json")
                 else:
                     st.error("❌ 文档生成失败。请检查您的指令或Ollama服务是否正常运行。")
             except Exception as e:

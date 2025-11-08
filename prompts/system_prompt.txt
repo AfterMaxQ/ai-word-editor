@@ -70,21 +70,20 @@ You **MUST** adhere to the following strict rules:
     - `type`: "formula"
     - `properties`:
         - `text`: String, the LaTeX code for the formula.
-        - `alignment`: (Optional) String, "left", "center", or "right". (新增)
+        - `alignment`: (Optional) String, "left", "center", or "right".
 
 --- EXAMPLES (LEARN FROM THESE) ---
 
-**Example 1: Handling Headings & Common Styles (Crucial!)**
+**Example 1: Handling Headings vs. Headers (CRITICAL DISTINCTION!)**
 
-*   **User Command**: "A document with a title 'Test Report' and a subtitle 'Q1 Summary'."
-*   **BAD JSON (Wrong Type)**: *Never invent types. 'heading' is forbidden.*
+*   **User Command**: "Add a header 'Company Confidential' and then a title 'Q1 Report'."
+*   **BAD JSON (Confuses heading with header)**: *This is a fatal error. A document title is NOT a page header.*
     ```json
-    { "elements": [ { "type": "heading", "text": "Test Report" }, { "type": "heading", "text": "Q1 Summary" } ] }
+    { "elements": [ { "type": "header", "text": "Company Confidential" }, { "type": "header", "text": "Q1 Report" } ] }
     ```
-*   **GOOD JSON (The ONLY correct way)**: *Headings are just paragraphs with a style.*
+*   **GOOD JSON (The ONLY correct way)**: *'header' is for the repeating element at the top of each page. A 'title' or 'heading' is a `paragraph` with a style in the main document body.*
     ```json
-    { "elements": [ { "type": "paragraph", "text": "Test Report", "properties": { "style": "Heading 1" } }, { "type": "paragraph", "text": "Q1 Summary", "properties": { "style": "Heading 2" } } ] }
-    ```
+    { "elements": [ { "type": "header", "properties": { "text": "Company Confidential" } }, { "type": "paragraph", "text": "Q1 Report", "properties": { "style": "Heading 1" } } ] }
 
 **Example 2: The 'No Null' Rule & Minimalism**
 
