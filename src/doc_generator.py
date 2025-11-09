@@ -1,6 +1,9 @@
 # src/doc_generator.py
 
 import json
+import os
+import shutil
+import tempfile
 import uuid
 import zipfile
 
@@ -14,13 +17,15 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.enum.section import WD_ORIENT
+from docx.enum.section import WD_ORIENT, WD_SECTION_START
 
 from docx.shared import RGBColor
 from .ai_parser import translate_latex_to_omml_llm
 from .latex_converter import latex_to_omml
 from docx.enum.text import WD_BREAK
-from docx.shared import Pt
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
+import xml.etree.ElementTree as ET
+
 
 
 # 定义一个从字符串到docx枚举的映射字典
@@ -53,40 +58,59 @@ def load_document_data(filepath):
 
 def apply_paragraph_properties(paragraph, properties: dict):
     """
-        将properties字典中定义的格式应用到段落对象上。
-
-        Args:
-            paragraph: python-docx的段落对象。
-            properties (dict): 包含格式定义的字典。
+    将properties字典中定义的格式应用到段落对象上。
+    - 新增：应用段前/段后间距和行距。
     """
     p_format = paragraph.paragraph_format
+
+    # 设置段前间距
+    spacing_before_pt = properties.get('spacing_before')
+    if spacing_before_pt is not None:
+        p_format.space_before = Pt(spacing_before_pt)
+
+    # 设置段后间距
+    spacing_after_pt = properties.get('spacing_after')
+    if spacing_after_pt is not None:
+        p_format.space_after = Pt(spacing_after_pt)
+
+    # 设置行距
+    line_spacing_val = properties.get('line_spacing')
+    if line_spacing_val is not None:
+        p_format.line_spacing = line_spacing_val
+
     # 设置首行缩进
     indent_cm = properties.get('first_line_indent')
     if indent_cm is not None:
         p_format.first_line_indent = Cm(indent_cm)
 
-    # --- 设置字体格式 (字体、字号等), 字体格式需要应用到段落内的Run上。---
-    if paragraph.runs:
-        font = paragraph.runs[0].font
-        font_name = properties.get('font_name')
-        # 设置字体名称
+    # --- 设置字体格式 (字体、字号、颜色等), 字体格式需要应用到段落内的Run上。---
+    if not paragraph.runs:
+        return
+
+    for run in paragraph.runs:
+        font = run.font
+
+        font_name = properties.get('font_name', '宋体')
+
         if font_name:
             font.name = font_name
-            # 导入中文字体所需的包
             from docx.oxml.ns import qn
-            # 设置中文字体 (东亚字体)
             font.element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
 
-        # 设置字体大小
         font_size_pt = properties.get('font_size')
         if font_size_pt is not None:
             font.size = Pt(font_size_pt)
-        #设置粗体
+
         is_bold = properties.get('bold')
-        if is_bold is not None:  # 可以是 True 或 False, 但不能是 None
+        if is_bold is not None:
             font.bold = bool(is_bold)
 
-
+        font_color_hex = properties.get('font_color')
+        if font_color_hex:
+            try:
+                font.color.rgb = RGBColor.from_string(font_color_hex)
+            except ValueError:
+                print(f"警告：无效的颜色格式码 '{font_color_hex}'，已跳过颜色设置。")
 
 def add_table_from_data(doc, element: dict):
     """
@@ -269,6 +293,462 @@ def add_footer_from_data(doc, element: dict, section):
     else:
         paragraph.add_run(text)
 
+
+def post_process_footnotes(docx_bytes, footnotes_to_inject, reference_format: str = "#"):
+    """
+    通过解压、操作XML、再重新打包的方式，为DOCX文件添加脚注。
+    此函数现在会根据提供的格式字符串（如 "[#]"）创建引用标记。
+
+    Args:
+        docx_bytes (bytes): 包含占位符的原始DOCX文件字节流。
+        footnotes_to_inject (dict): 一个字典，键是占位符，值是脚注文本。
+        reference_format (str): 引用标记的格式，'#' 是数字的占位符。
+    """
+    if not footnotes_to_inject:
+        return docx_bytes
+
+    print("\n--- 开始脚注XML后处理阶段 ---")
+    print(f"  > 使用引用格式: '{reference_format}'")
+
+    # ... (ns 定义和 temp_dir 创建保持不变) ...
+    ns = {
+        'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+        'rel': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+        'content_types': 'http://schemas.openxmlformats.org/package/2006/content-types'
+    }
+    for prefix, uri in ns.items():
+        ET.register_namespace(prefix, uri)
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # ... (解压和文件路径定义保持不变) ...
+        with zipfile.ZipFile(io.BytesIO(docx_bytes), 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        # 定义文件路径
+        document_path = os.path.join(temp_dir, 'word', 'document.xml')
+        footnotes_path = os.path.join(temp_dir, 'word', 'footnotes.xml')
+        rels_path = os.path.join(temp_dir, 'word', '_rels', 'document.xml.rels')
+        content_types_path = os.path.join(temp_dir, '[Content_Types].xml')
+
+        # ... (处理 footnotes.xml 和读取 document.xml 的逻辑保持不变) ...
+        footnotes_tree = None
+        footnotes_root = None
+        if os.path.exists(footnotes_path):
+            footnotes_tree = ET.parse(footnotes_path)
+            footnotes_root = footnotes_tree.getroot()
+        else:
+            footnotes_root = ET.Element(f'{{{ns["w"]}}}footnotes')
+            # 添加Word需要的分隔符脚注
+            ET.SubElement(footnotes_root, f'{{{ns["w"]}}}footnote',
+                          {f'{{{ns["w"]}}}id': '-1', f'{{{ns["w"]}}}type': 'separator'})
+            ET.SubElement(footnotes_root, f'{{{ns["w"]}}}footnote',
+                          {f'{{{ns["w"]}}}id': '0', f'{{{ns["w"]}}}type': 'continuationSeparator'})
+            footnotes_tree = ET.ElementTree(footnotes_root)
+
+        # 2. 读取 document.xml 内容
+        doc_xml_content = ""
+        with open(document_path, 'r', encoding='utf-8') as f:
+            doc_xml_content = f.read()
+
+        # 3. 遍历需要注入的脚注，替换占位符并构建脚注内容
+        for placeholder, footnote_text in footnotes_to_inject.items():
+            # ... (确定 new_footnote_id 和构建脚注XML内容的逻辑保持不变) ...
+            existing_ids = [int(fn.get(f'{{{ns["w"]}}}id')) for fn in footnotes_root.findall('w:footnote', ns) if
+                            int(fn.get(f'{{{ns["w"]}}}id')) > 0]
+            new_footnote_id = (max(existing_ids) + 1) if existing_ids else 1
+
+            # 构建脚注XML内容
+            footnote_element = ET.SubElement(footnotes_root, f'{{{ns["w"]}}}footnote',
+                                             {f'{{{ns["w"]}}}id': str(new_footnote_id)})
+            p_element = ET.SubElement(footnote_element, f'{{{ns["w"]}}}p')
+            pPr = ET.SubElement(p_element, f'{{{ns["w"]}}}pPr')
+            ET.SubElement(pPr, f'{{{ns["w"]}}}pStyle', {f'{{{ns["w"]}}}val': 'FootnoteText'})
+            r_ref = ET.SubElement(p_element, f'{{{ns["w"]}}}r')
+            rPr_ref = ET.SubElement(r_ref, f'{{{ns["w"]}}}rPr')
+            ET.SubElement(rPr_ref, f'{{{ns["w"]}}}rStyle', {f'{{{ns["w"]}}}val': 'FootnoteReference'})
+            ET.SubElement(r_ref, f'{{{ns["w"]}}}footnoteRef')
+            r_text = ET.SubElement(p_element, f'{{{ns["w"]}}}r')
+            t_text = ET.SubElement(r_text, f'{{{ns["w"]}}}t')
+            t_text.text = f" {footnote_text}"
+
+            parts = reference_format.split('#')
+            prefix = parts[0]
+            suffix = parts[1] if len(parts) > 1 else ""
+
+            # 创建一个函数来生成带上标样式的 run
+            def create_styled_run(text_content=None):
+                run = ET.Element(f'{{{ns["w"]}}}r')
+                rpr = ET.SubElement(run, f'{{{ns["w"]}}}rPr')
+                ET.SubElement(rpr, f'{{{ns["w"]}}}vertAlign', {f'{{{ns["w"]}}}val': 'superscript'})
+                if text_content:
+                    t = ET.SubElement(run, f'{{{ns["w"]}}}t')
+                    t.text = text_content
+                return run
+
+            xml_parts_to_combine = []
+            if prefix:
+                xml_parts_to_combine.append(create_styled_run(prefix))
+
+            # 创建包含脚注引用的 run
+            ref_run = create_styled_run()
+            ET.SubElement(ref_run, f'{{{ns["w"]}}}footnoteReference', {f'{{{ns["w"]}}}id': str(new_footnote_id)})
+            xml_parts_to_combine.append(ref_run)
+
+            if suffix:
+                xml_parts_to_combine.append(create_styled_run(suffix))
+
+            # 将所有 XML 部分转换为字符串并连接
+            combined_xml_str = "".join([ET.tostring(part, encoding='unicode') for part in xml_parts_to_combine])
+            # ▲▲▲ 修改结束 ▲▲▲
+
+            # 在 document.xml 内容中替换占位符
+            if placeholder in doc_xml_content:
+                doc_xml_content = doc_xml_content.replace(placeholder, combined_xml_str)
+                print(f"  > 找到并替换脚注占位符: '{placeholder}'")
+            else:
+                print(f"警告: 在 document.xml 中未找到占位符 '{placeholder}'。")
+
+        footnotes_tree.write(footnotes_path, encoding='UTF-8', xml_declaration=True)
+        with open(document_path, 'w', encoding='utf-8') as f:
+            f.write(doc_xml_content)
+
+        # 5. 更新关系文件 (rels)
+        rels_tree = ET.parse(rels_path)
+        rels_root = rels_tree.getroot()
+        if not any(rel.get('Target') == 'footnotes.xml' for rel in rels_root):
+            existing_rids = [int(r.get('Id')[3:]) for r in rels_root]
+            new_rid = f"rId{max(existing_rids) + 1 if existing_rids else 1}"
+            ET.SubElement(rels_root, f'{{{ns["rel"]}}}Relationship', {
+                'Id': new_rid,
+                'Type': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes',
+                'Target': 'footnotes.xml'
+            })
+            rels_tree.write(rels_path, encoding='UTF-8', xml_declaration=True)
+
+        # 6. 更新 [Content_Types].xml
+        types_tree = ET.parse(content_types_path)
+        types_root = types_tree.getroot()
+        if not any(
+                ov.get('PartName') == '/word/footnotes.xml' for ov in types_root.findall('content_types:Override', ns)):
+            ET.SubElement(types_root, f'{{{ns["content_types"]}}}Override', {
+                'PartName': '/word/footnotes.xml',
+                'ContentType': 'application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml'
+            })
+            types_tree.write(content_types_path, encoding='UTF-8', xml_declaration=True)
+
+        # 7. 将临时目录重新打包成字节流
+        output_stream = io.BytesIO()
+        with zipfile.ZipFile(output_stream, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(temp_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    archive_name = os.path.relpath(file_path, temp_dir)
+                    zipf.write(file_path, archive_name)
+
+        print("--- 脚注XML后处理阶段完成 ---")
+        return output_stream.getvalue()
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+def post_process_endnotes(docx_bytes, endnotes_to_inject, reference_format: str = "#"):
+    """
+    通过解压、操作XML、再重新打包的方式，为DOCX文件添加尾注。
+    此函数现在会根据提供的格式字符串（如 "[#]"）创建引用标记。
+
+    Args:
+        docx_bytes (bytes): 包含占位符的原始DOCX文件字节流。
+        endnotes_to_inject (dict): 一个字典，键是占位符，值是尾注文本。
+        reference_format (str): 引用标记的格式，'#' 是数字的占位符。
+    """
+    if not endnotes_to_inject:
+        return docx_bytes
+
+    print("\n--- 开始尾注XML后处理阶段 ---")
+    print(f"  > 使用引用格式: '{reference_format}'")
+
+    # ... (ns 定义和 temp_dir 创建保持不变) ...
+    ns = {
+        'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+        'rel': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+        'content_types': 'http://schemas.openxmlformats.org/package/2006/content-types'
+    }
+    for prefix, uri in ns.items():
+        ET.register_namespace(prefix, uri)
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # ... (解压和文件路径定义保持不变) ...
+        with zipfile.ZipFile(io.BytesIO(docx_bytes), 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        # 定义所需文件的路径
+        document_path = os.path.join(temp_dir, 'word', 'document.xml')
+        endnotes_path = os.path.join(temp_dir, 'word', 'endnotes.xml')  # 尾注XML文件
+        rels_path = os.path.join(temp_dir, 'word', '_rels', 'document.xml.rels')
+        content_types_path = os.path.join(temp_dir, '[Content_Types].xml')
+
+        endnotes_tree = None
+        endnotes_root = None
+        if os.path.exists(endnotes_path):
+            endnotes_tree = ET.parse(endnotes_path)
+            endnotes_root = endnotes_tree.getroot()
+        else:
+            # 如果文件不存在，则创建一个新的XML结构
+            endnotes_root = ET.Element(f'{{{ns["w"]}}}endnotes')
+            # 添加Word需要的分隔符尾注
+            ET.SubElement(endnotes_root, f'{{{ns["w"]}}}endnote',
+                          {f'{{{ns["w"]}}}id': '-1', f'{{{ns["w"]}}}type': 'separator'})
+            ET.SubElement(endnotes_root, f'{{{ns["w"]}}}endnote',
+                          {f'{{{ns["w"]}}}id': '0', f'{{{ns["w"]}}}type': 'continuationSeparator'})
+            endnotes_tree = ET.ElementTree(endnotes_root)
+
+        # 2. 读取主文档XML内容
+        doc_xml_content = ""
+        with open(document_path, 'r', encoding='utf-8') as f:
+            doc_xml_content = f.read()
+
+        # 3. 遍历需要注入的尾注，构建XML并替换占位符
+        for placeholder, endnote_text in endnotes_to_inject.items():
+            # ... (确定 new_endnote_id 和构建尾注XML内容的逻辑保持不变) ...
+            existing_ids = [int(en.get(f'{{{ns["w"]}}}id')) for en in endnotes_root.findall('w:endnote', ns) if
+                            int(en.get(f'{{{ns["w"]}}}id')) > 0]
+            new_endnote_id = (max(existing_ids) + 1) if existing_ids else 1
+
+            # 构建<w:endnote> XML元素
+            endnote_element = ET.SubElement(endnotes_root, f'{{{ns["w"]}}}endnote',
+                                            {f'{{{ns["w"]}}}id': str(new_endnote_id)})
+            p_element = ET.SubElement(endnote_element, f'{{{ns["w"]}}}p')
+            pPr = ET.SubElement(p_element, f'{{{ns["w"]}}}pPr')
+            ET.SubElement(pPr, f'{{{ns["w"]}}}pStyle', {f'{{{ns["w"]}}}val': 'EndnoteText'})  # 尾注文本样式
+            r_ref = ET.SubElement(p_element, f'{{{ns["w"]}}}r')
+            rPr_ref = ET.SubElement(r_ref, f'{{{ns["w"]}}}rPr')
+            ET.SubElement(rPr_ref, f'{{{ns["w"]}}}rStyle', {f'{{{ns["w"]}}}val': 'EndnoteReference'})  # 尾注引用样式
+            ET.SubElement(r_ref, f'{{{ns["w"]}}}endnoteRef')  # 尾注引用标记
+            r_text = ET.SubElement(p_element, f'{{{ns["w"]}}}r')
+            t_text = ET.SubElement(r_text, f'{{{ns["w"]}}}t')
+            t_text.text = f" {endnote_text}"
+
+            parts = reference_format.split('#')
+            prefix = parts[0]
+            suffix = parts[1] if len(parts) > 1 else ""
+
+            # 创建一个函数来生成带上标样式的 run
+            def create_styled_run(text_content=None):
+                run = ET.Element(f'{{{ns["w"]}}}r')
+                rpr = ET.SubElement(run, f'{{{ns["w"]}}}rPr')
+                ET.SubElement(rpr, f'{{{ns["w"]}}}vertAlign', {f'{{{ns["w"]}}}val': 'superscript'})
+                if text_content:
+                    t = ET.SubElement(run, f'{{{ns["w"]}}}t')
+                    t.text = text_content
+                return run
+
+            xml_parts_to_combine = []
+            if prefix:
+                xml_parts_to_combine.append(create_styled_run(prefix))
+
+            # 创建包含尾注引用的 run
+            ref_run = create_styled_run()
+            ET.SubElement(ref_run, f'{{{ns["w"]}}}endnoteReference', {f'{{{ns["w"]}}}id': str(new_endnote_id)})
+            xml_parts_to_combine.append(ref_run)
+
+            if suffix:
+                xml_parts_to_combine.append(create_styled_run(suffix))
+
+            # 将所有 XML 部分转换为字符串并连接
+            combined_xml_str = "".join([ET.tostring(part, encoding='unicode') for part in xml_parts_to_combine])
+
+            # 在主文档XML中进行替换
+            if placeholder in doc_xml_content:
+                # 使用新的带上标属性的 XML 字符串
+                doc_xml_content = doc_xml_content.replace(placeholder, combined_xml_str)
+                print(f"  > 找到并替换尾注占位符: '{placeholder}'")
+            else:
+                print(f"警告: 在 document.xml 中未找到尾注占位符 '{placeholder}'。")
+
+        # ... (写回文件、更新rels和打包的逻辑保持不变) ...
+        endnotes_tree.write(endnotes_path, encoding='UTF-8', xml_declaration=True)
+        with open(document_path, 'w', encoding='utf-8') as f:
+            f.write(doc_xml_content)
+
+        # 5. 更新关系文件 (document.xml.rels)
+        rels_tree = ET.parse(rels_path)
+        rels_root = rels_tree.getroot()
+        if not any(rel.get('Target') == 'endnotes.xml' for rel in rels_root):
+            existing_rids = [int(r.get('Id')[3:]) for r in rels_root]
+            new_rid = f"rId{max(existing_rids) + 1 if existing_rids else 1}"
+            ET.SubElement(rels_root, f'{{{ns["rel"]}}}Relationship', {
+                'Id': new_rid,
+                'Type': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes',  # 尾注关系类型
+                'Target': 'endnotes.xml'
+            })
+            rels_tree.write(rels_path, encoding='UTF-8', xml_declaration=True)
+
+        # 6. 更新内容类型文件 ([Content_Types].xml)
+        types_tree = ET.parse(content_types_path)
+        types_root = types_tree.getroot()
+        if not any(
+                ov.get('PartName') == '/word/endnotes.xml' for ov in types_root.findall('content_types:Override', ns)):
+            ET.SubElement(types_root, f'{{{ns["content_types"]}}}Override', {
+                'PartName': '/word/endnotes.xml',
+                'ContentType': 'application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml'  # 尾注内容类型
+            })
+            types_tree.write(content_types_path, encoding='UTF-8', xml_declaration=True)
+
+        # 7. 重新打包成DOCX字节流
+        output_stream = io.BytesIO()
+        with zipfile.ZipFile(output_stream, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(temp_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    archive_name = os.path.relpath(file_path, temp_dir)
+                    zipf.write(file_path, archive_name)
+
+        print("--- 尾注XML后处理阶段完成 ---")
+        return output_stream.getvalue()
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+_bookmark_id_counter = 0
+
+
+def add_bookmark(paragraph, bookmark_name: str):
+    """
+    为一个段落的完整内容添加书签。
+    这需要直接操作OXML来插入<w:bookmarkStart>和<w:bookmarkEnd>标签。
+    """
+    global _bookmark_id_counter
+    # 创建书签的起始标签
+    run = paragraph.runs[0]  # 通常在段落的第一个run之前插入
+    bookmark_start = OxmlElement('w:bookmarkStart')
+    # Word需要一个数字ID和一个名字。我们用计数器生成唯一ID。
+    bookmark_start.set(qn('w:id'), str(_bookmark_id_counter))
+    bookmark_start.set(qn('w:name'), bookmark_name)
+    # 将起始标签插入到段落的XML中
+    run._r.addprevious(bookmark_start)
+
+    # 创建书签的结束标签
+    run = paragraph.runs[-1]  # 在段落的最后一个run之后插入
+    bookmark_end = OxmlElement('w:bookmarkEnd')
+    bookmark_end.set(qn('w:id'), str(_bookmark_id_counter))
+    # 将结束标签插入到段落的XML中
+    run._r.addnext(bookmark_end)
+
+    _bookmark_id_counter += 1
+
+
+def add_cross_reference_field(paragraph, bookmark_name: str, display_text: str):
+    """
+    在段落中插入一个带有预显示文本的交叉引用域 (REF field)。
+    """
+    # 域代码由多个部分组成，每个部分都放在自己的 run 中，这是最稳妥的做法
+
+    # 1. 'begin' 标记：表示一个域的开始
+    run_begin = paragraph.add_run()
+    fldChar_begin = OxmlElement('w:fldChar')
+    fldChar_begin.set(qn('w:fldCharType'), 'begin')
+    run_begin._r.append(fldChar_begin)
+
+    # 2. 指令文本：告诉Word具体做什么
+    run_instr = paragraph.add_run()
+    instrText = OxmlElement('w:instrText')
+    instrText.set(qn('xml:space'), 'preserve')
+    instrText.text = f' REF {bookmark_name} \\h '  # REF <书签名> \h
+    run_instr._r.append(instrText)
+
+    # 3. 'separate' 标记：分隔指令和结果
+    run_sep = paragraph.add_run()
+    fldChar_separate = OxmlElement('w:fldChar')
+    fldChar_separate.set(qn('w:fldCharType'), 'separate')
+    run_sep._r.append(fldChar_separate)
+
+    # 4. 【关键修复】缓存的显示结果
+    # Word 打开文档时会直接显示这里的文本
+    run_display = paragraph.add_run()
+    run_display.text = display_text
+
+    # 5. 'end' 标记：表示一个域的结束
+    run_end = paragraph.add_run()
+    fldChar_end = OxmlElement('w:fldChar')
+    fldChar_end.set(qn('w:fldCharType'), 'end')
+    run_end._r.append(fldChar_end)
+
+
+def apply_numbering_formats(docx_bytes, page_setup_data):
+    """
+    通过修改 settings.xml 来应用脚注和尾注的数字格式。
+    """
+    endnote_fmt = page_setup_data.get("endnote_number_format")
+    footnote_fmt = page_setup_data.get("footnote_number_format")
+
+    if not endnote_fmt and not footnote_fmt:
+        return docx_bytes
+
+    print("\n--- 开始应用自定义引用编号格式 ---")
+
+    ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+    ET.register_namespace('w', ns['w'])
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        with zipfile.ZipFile(io.BytesIO(docx_bytes), 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        settings_path = os.path.join(temp_dir, 'word', 'settings.xml')
+
+        if not os.path.exists(settings_path):
+            print("警告: settings.xml 未找到，跳过编号格式化。")
+            return docx_bytes
+
+        settings_tree = ET.parse(settings_path)
+        settings_root = settings_tree.getroot()
+
+        # 处理尾注设置
+        if endnote_fmt:
+            # 查找或创建 <w:endnotePr>
+            endnote_pr = settings_root.find('w:endnotePr', ns)
+            if endnote_pr is None:
+                endnote_pr = ET.SubElement(settings_root, f'{{{ns["w"]}}}endnotePr')
+
+            # 查找或创建 <w:numFmt> 并设置其值
+            num_fmt = endnote_pr.find('w:numFmt', ns)
+            if num_fmt is None:
+                num_fmt = ET.SubElement(endnote_pr, f'{{{ns["w"]}}}numFmt')
+            num_fmt.set(f'{{{ns["w"]}}}val', endnote_fmt)
+            print(f"  > 已将尾注编号格式设置为: '{endnote_fmt}'")
+
+        # (可选) 处理脚注设置，逻辑同上
+        if footnote_fmt:
+            footnote_pr = settings_root.find('w:footnotePr', ns)
+            if footnote_pr is None:
+                footnote_pr = ET.SubElement(settings_root, f'{{{ns["w"]}}}footnotePr')
+            num_fmt = footnote_pr.find('w:numFmt', ns)
+            if num_fmt is None:
+                num_fmt = ET.SubElement(footnote_pr, f'{{{ns["w"]}}}numFmt')
+            num_fmt.set(f'{{{ns["w"]}}}val', footnote_fmt)
+            print(f"  > 已将脚注编号格式设置为: '{footnote_fmt}'")
+
+        settings_tree.write(settings_path, encoding='UTF-8', xml_declaration=True)
+
+        # 重新打包
+        output_stream = io.BytesIO()
+        with zipfile.ZipFile(output_stream, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(temp_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    archive_name = os.path.relpath(file_path, temp_dir)
+                    zipf.write(file_path, archive_name)
+
+        print("--- 自定义引用编号格式应用完毕 ---")
+        return output_stream.getvalue()
+
+    finally:
+        shutil.rmtree(temp_dir)
+
 def apply_page_setup(doc, page_setup_data: dict):
     """
         根据 page_setup_data 字典中的数据，应用页面布局设置。
@@ -337,8 +817,6 @@ def apply_section_properties(section, section_data: dict):
         # 将 <w:cols> 添加到 <w:sectPr> 中
         sectPr.append(cols)
 
-
-
 def add_page_break_from_data(doc, element: dict):
     """
     在文档中添加一个分页符。
@@ -354,8 +832,18 @@ def add_column_break_from_data(doc, element: dict):
     在文档中添加一个分栏符。
     """
     # 分栏符必须添加到一个段落中
-    p = doc.add_paragraph()
-    p.add_run().add_break(WD_BREAK.COLUMN)
+    if not doc.paragraphs:
+        # 极端情况：如果文档中还没有任何段落，则创建一个
+        # （这在实际应用中几乎不会发生，因为总会有内容的）
+        p = doc.add_paragraph()
+        p.add_run().add_break(WD_BREAK.COLUMN)
+        return
+
+        # 获取文档中的最后一个段落
+    last_paragraph = doc.paragraphs[-1]
+    # 在该段落的末尾添加一个新的run，并在其中插入分栏符
+    last_paragraph.add_run().add_break(WD_BREAK.COLUMN)
+
 
 def add_toc_from_data(doc, element: dict):
     """
@@ -389,15 +877,12 @@ def add_toc_from_data(doc, element: dict):
     run._r.append(fldChar_separate)
     run._r.append(fldChar_end)
 
-
-# ★★★ 新增核心函数: 三层防御公式处理器 ★★★
 def get_formula_xml_and_placeholder(element: dict) -> tuple[str | None, str | None]:
     """
-    ★★★【三层防御公式处理器】★★★
-    1. 尝试本地转换器 (高可靠性)
-    2. 若失败，回退到 LLM (高覆盖性)
-    3. 对所有输出进行零信任验证
-    4. 若全部失败，生成一个格式化的错误信息
+        1. 尝试本地转换器
+        2. 若失败，回退到 LLM
+        3. 对所有输出进行零信任验证
+        4. 若全部失败，生成一个格式化的错误信息
     """
     latex_text = element.get("properties", {}).get("text")
     if not latex_text: return None, None
@@ -460,44 +945,50 @@ def get_formula_xml_and_placeholder(element: dict) -> tuple[str | None, str | No
 def create_document(data: dict) -> tuple[bytes | None, str | None]:
     """
     根据以“节”为单位的、经过验证的JSON数据创建Word文档。
-    这是文档生成引擎的核心，支持多节和节级属性（如分栏）。
     """
     doc = Document()
     formulas_to_inject = {}
+    footnotes_to_inject = {}
+    endnotes_to_inject = {}
 
-    # --- 阶段一: 使用 python-docx 生成带占位符的草稿文档 ---
-    # 1. 应用全局页面设置 (只会影响第一节)
     page_setup_data = data.get('page_setup', {})
     if page_setup_data:
         apply_page_setup(doc, page_setup_data)
 
     sections_data = data.get('sections', [])
 
-    # 2. 遍历所有节
     for i, section_data in enumerate(sections_data):
-        # 获取当前的节对象
         if i == 0:
-            # 对于第一个节，我们直接使用文档默认创建的节
             section = doc.sections[0]
         else:
-            # 对于后续的节，我们必须创建一个新的节
-            # WD_SECTION_START.NEW_PAGE 是最常用的分节方式
-            from docx.enum.section import WD_SECTION_START
             section = doc.add_section(WD_SECTION_START.CONTINUOUS)
 
-        # 3. 应用本节的特定属性 (例如，分栏)
         apply_section_properties(section, section_data)
 
-        # 4. 遍历并处理本节内的所有元素
         elements = section_data.get('elements', [])
+
+        # 第一步：预扫描，构建书签->文本的映射
+        bookmark_map = {}
+        print("\n--- 开始预扫描本节的书签 ---")
+        for element in elements:
+            if element.get('type') == 'paragraph':
+                properties = element.get('properties', {})
+                bookmark_id = properties.get('bookmark_id')
+                if bookmark_id:
+                    # 将书签ID和段落的纯文本内容关联起来
+                    text_content = element.get('text', '')
+                    bookmark_map[bookmark_id] = text_content
+                    print(f"  > 发现书签: '{bookmark_id}' -> '{text_content}'")
+        print("--- 预扫描结束 ---\n")
+        # 预扫描结束
+        #  第二步：正式生成内容
         for element in elements:
             element_type = element.get('type')
 
-            # ★★★ 重要: 页眉/页脚是节的属性, 需要传递 section 对象
             if element_type == "header":
-                add_header_from_data(doc, element, section)  # 需要修改函数签名
+                add_header_from_data(doc, element, section)
             elif element_type == "footer":
-                add_footer_from_data(doc, element, section)  # 需要修改函数签名
+                add_footer_from_data(doc, element, section)
             elif element_type == "formula":
                 placeholder, omml_xml = get_formula_xml_and_placeholder(element)
                 if placeholder and omml_xml:
@@ -505,11 +996,44 @@ def create_document(data: dict) -> tuple[bytes | None, str | None]:
                     p.add_run(placeholder)
                     formulas_to_inject[placeholder] = omml_xml
             elif element_type == 'paragraph':
-                text = element.get('text', '')
                 properties = element.get('properties', {})
                 style = properties.get("style") if isinstance(properties, dict) else None
-                p = doc.add_paragraph(text, style=style)
-                if isinstance(properties, dict): apply_paragraph_properties(p, properties)
+
+                p = doc.add_paragraph(style=style)
+
+                content = element.get('content')
+                if content and isinstance(content, list):
+                    for run_item in content:
+                        run_type = run_item.get('type')
+                        run_text = run_item.get('text', '')
+                        if run_type == 'text':
+                            p.add_run(run_text)
+                        elif run_type == 'footnote':
+                            placeholder = f"__FOOTNOTE_{uuid.uuid4().hex}__"
+                            p.add_run(placeholder)
+                            footnotes_to_inject[placeholder] = run_text
+                        elif run_type == 'endnote':
+                            placeholder = f"__ENDNOTE_{uuid.uuid4().hex}__"
+                            p.add_run(placeholder)
+                            endnotes_to_inject[placeholder] = run_text
+                        elif run_type == 'cross_reference':
+                            target_bookmark = run_item.get('target_bookmark')
+                            if target_bookmark:
+                                display_text = bookmark_map.get(target_bookmark, "[错误: 找不到引用]")
+                                add_cross_reference_field(p, target_bookmark, display_text)
+                                print(f"  > 成功插入对书签 '{target_bookmark}' 的交叉引用。")
+                else:
+                    text = element.get('text', '')
+                    p.add_run(text)
+
+                if isinstance(properties, dict):
+                    apply_paragraph_properties(p, properties)
+
+                bookmark_name = properties.get("bookmark_id")
+                if bookmark_name and p.runs:
+                    add_bookmark(p, bookmark_name)
+                    print(f"> 成功为段落创建书签: '{bookmark_name}")
+
             elif element_type == "table":
                 add_table_from_data(doc, element)
             elif element_type == "list":
@@ -523,80 +1047,96 @@ def create_document(data: dict) -> tuple[bytes | None, str | None]:
             elif element_type == "toc":
                 add_toc_from_data(doc, element)
 
-    # --- 阶段二: XML后处理 (与之前完全相同) ---
-    if not formulas_to_inject:
-        draft_stream = io.BytesIO()
-        doc.save(draft_stream)
-        draft_stream.seek(0)
-        final_xml_body = etree.tostring(doc.element.body, pretty_print=True, encoding='unicode')
-        return draft_stream.getvalue(), final_xml_body
-
-    print("\n--- 开始XML后处理阶段 ---")
-    # ... (后续的XML注入代码保持不变)
+    # Step 1: Always save the initial document with placeholders to a byte stream.
+    # This stream will be the input for our post-processing steps.
     draft_stream = io.BytesIO()
     doc.save(draft_stream)
     draft_stream.seek(0)
+    processed_bytes = draft_stream.getvalue()
+    final_xml_body_for_log = "" # We'll populate this for logging purposes.
 
-    final_stream = io.BytesIO()
-    diagnostic_xml = ""
+    # Step 2: Process formulas if they exist.
+    # This is a complex operation that unzips, modifies, and re-zips the document.
+    if formulas_to_inject:
+        print("\n--- 开始XML后处理阶段 (公式) ---")
+        final_stream = io.BytesIO()
+        with zipfile.ZipFile(io.BytesIO(processed_bytes), 'r') as zin, zipfile.ZipFile(final_stream, 'w', zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                content = zin.read(item.filename)
+                if item.filename == 'word/document.xml':
+                    root = etree.fromstring(content)
+                    body = root.find(qn('w:body'))
+                    paragraphs = body.findall('.//' + qn('w:p'))
+                    for p in paragraphs:
+                        placeholder_text = p.xpath("string(.)").strip()
+                        if placeholder_text in formulas_to_inject:
+                            real_xml_str = formulas_to_inject[placeholder_text]
+                            try:
+                                new_content_element = etree.fromstring(real_xml_str)
+                                for child in list(p):
+                                    p.remove(child)
+                                if new_content_element.tag == qn('m:oMathPara'):
+                                    para_props = new_content_element.find(qn('m:oMathParaPr'))
+                                    if para_props is not None:
+                                        pPr = p.find(qn('w:pPr'))
+                                        if pPr is None:
+                                            pPr = OxmlElement('w:pPr')
+                                            p.insert(0, pPr)
+                                        jc = para_props.find(qn('m:jc'))
+                                        if jc is not None:
+                                            new_jc = OxmlElement('w:jc')
+                                            new_jc.set(qn('w:val'), jc.get(qn('m:val')))
+                                            pPr.append(new_jc)
+                                    oMath = new_content_element.find(qn('m:oMath'))
+                                    if oMath is not None:
+                                        p.append(oMath)
+                                else:
+                                    for run in new_content_element.findall('.//' + qn('w:r')):
+                                        p.append(run)
+                            except etree.XMLSyntaxError as e:
+                                print(f"  ❌ 严重错误: 无法解析待注入的XML，跳过: {e}")
+                                continue
+                    final_xml_content = etree.tostring(root, encoding='utf-8', xml_declaration=True, standalone=True)
+                    final_xml_body_for_log = etree.tostring(root, pretty_print=True, encoding='unicode')
+                    zout.writestr(item, final_xml_content)
+                else:
+                    zout.writestr(item, content)
+        final_stream.seek(0)
+        processed_bytes = final_stream.getvalue() # Update the bytes with the formula-processed version.
+        print("--- 公式XML后处理阶段完成 ---\n")
 
-    with zipfile.ZipFile(draft_stream, 'r') as zin, zipfile.ZipFile(final_stream, 'w', zipfile.ZIP_DEFLATED) as zout:
-        for item in zin.infolist():
-            content = zin.read(item.filename)
+    # ▼▼▼【关键修改】读取自定义格式并传递给后处理函数 ▼▼▼
+    page_setup_data_for_refs = data.get('page_setup', {})
+    footnote_ref_format = page_setup_data_for_refs.get('footnote_reference_format', "[#]")
+    endnote_ref_format = page_setup_data_for_refs.get('endnote_reference_format', "[#]")
 
-            if item.filename == 'word/document.xml':
-                print("  正在处理: word/document.xml")
-                root = etree.fromstring(content)
-                body = root.find(qn('w:body'))
+    # Step 3: Process footnotes if they exist.
+    # This runs on the output of the previous step (or the initial bytes if no formulas).
+    if footnotes_to_inject:
+        processed_bytes = post_process_footnotes(processed_bytes, footnotes_to_inject, footnote_ref_format)
 
-                paragraphs = body.findall('.//' + qn('w:p'))
-                for p in paragraphs:
-                    placeholder_text = p.xpath("string(.)").strip()
+    if endnotes_to_inject:
+        processed_bytes = post_process_endnotes(processed_bytes, endnotes_to_inject, endnote_ref_format)
 
-                    if placeholder_text in formulas_to_inject:
-                        real_xml_str = formulas_to_inject[placeholder_text]
-                        print(f"  > 找到占位符: '{placeholder_text}'")
-                        try:
-                            new_content_element = etree.fromstring(real_xml_str)
+    if page_setup_data_for_refs:
+        processed_bytes = apply_numbering_formats(processed_bytes, page_setup_data_for_refs)
 
-                            for child in list(p):
-                                p.remove(child)
+    # 步骤 5: 应用自定义的脚注/尾注编号格式
+    page_setup_data_for_numbering = data.get('page_setup', {})
+    if page_setup_data_for_numbering:
+        processed_bytes = apply_numbering_formats(processed_bytes, page_setup_data_for_numbering)
 
-                            if new_content_element.tag == qn('m:oMathPara'):
-                                para_props = new_content_element.find(qn('m:oMathParaPr'))
-                                if para_props is not None:
-                                    pPr = p.find(qn('w:pPr'))
-                                    if pPr is None:
-                                        pPr = OxmlElement('w:pPr')
-                                        p.insert(0, pPr)
-                                    jc = para_props.find(qn('m:jc'))
-                                    if jc is not None:
-                                        new_jc = OxmlElement('w:jc')
-                                        new_jc.set(qn('w:val'), jc.get(qn('m:val')))
-                                        pPr.append(new_jc)
+    # Step 4: If no formulas were processed, we still need to get the XML for logging.
+    if not final_xml_body_for_log:
+         try:
+            # Note: This XML won't show the footnote changes, as they happen at the byte level.
+            # It's primarily for diagnosing issues before post-processing.
+            final_xml_body_for_log = etree.tostring(doc.element.body, pretty_print=True, encoding='unicode')
+         except Exception as e:
+            print(f"警告: 无法为日志生成XML: {e}")
+            final_xml_body_for_log = "无法为日志生成XML。"
 
-                                oMath = new_content_element.find(qn('m:oMath'))
-                                if oMath is not None:
-                                    p.append(oMath)
-                                    print(f"    - 成功将 <m:oMath> 注入到 <w:p> 中。")
-
-                            else:
-                                for run in new_content_element.findall('.//' + qn('w:r')):
-                                    p.append(run)
-                                print(f"    - 成功将错误提示 <w:r> 注入到 <w:p> 中。")
-
-                        except etree.XMLSyntaxError as e:
-                            print(f"  ❌ 严重错误: 无法解析待注入的XML，跳过: {e}")
-                            continue
-
-                final_xml_content = etree.tostring(root, encoding='utf-8', xml_declaration=True, standalone=True)
-                diagnostic_xml = etree.tostring(root, pretty_print=True, encoding='unicode')
-                zout.writestr(item, final_xml_content)
-            else:
-                zout.writestr(item, content)
-
-    print("--- XML后处理阶段完成 ---\n")
-    final_stream.seek(0)
-    return final_stream.getvalue(), diagnostic_xml
+    # Step 5: Return the final, fully processed document bytes and the log.
+    return processed_bytes, final_xml_body_for_log
 
 
