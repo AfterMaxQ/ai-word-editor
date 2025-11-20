@@ -1,0 +1,13 @@
+#Modelfile
+
+# Load the converted base model
+FROM qwen2.5-coder:3b
+
+# Apply the converted LoRA adapter
+# ADAPTER ./_model_assets/lora.gguf
+
+# 2. (推荐) 设置模型参数，以获得更稳定、更确定的输出
+PARAMETER temperature 0.25
+PARAMETER top_p 0.9
+
+

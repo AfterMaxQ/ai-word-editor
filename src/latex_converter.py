@@ -229,9 +229,9 @@ def _parse_argument(state: ParserState) -> List[etree._Element]:
     # 2. NEW: Handle parenthesized groups intelligently
     if state.current_token() == '(':
         state.advance()  # Consume '('
-        # Parse the content inside the parentheses
+        # 解析括号内的内容
         content = _parse_tokens(state, stop_tokens=[')'])
-        # Return a proper delimiter object, which is the key to the fix
+        # 返回一个正确的定界符对象，这是修复的关键
         return [_create_delimiter_omml('(', ')', content)]
 
     # 3. Fallback for single-token arguments (e.g., in `\sqrt x`)

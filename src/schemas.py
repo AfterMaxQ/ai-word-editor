@@ -1,130 +1,107 @@
 # src/schemas.py
+
+from typing import Any, Dict, List, Literal, Optional, Union, Annotated
 from pydantic import BaseModel, Field, model_validator
-from typing import List, Optional, Literal, Union, Dict, Any, Annotated # <-- Import Annotated
 
-# --- 首先定义最内层的、可复用的模型 ---
-
+# ==============================================================================
+# SECTION 1: FINAL DOCUMENT STRUCTURE SCHEMA (No changes)
+# ==============================================================================
 class BaseProperties(BaseModel):
-    """一个基础的属性模型，允许额外的属性"""
-    class Config:
-        extra = 'allow'
-
+    class Config: extra = 'allow'
 class ParagraphProperties(BaseProperties):
-    style: Optional[str] = None
-    font_name: Optional[str] = None
-    font_size: Optional[int] = None
-    bold: Optional[bool] = None
-    first_line_indent: Optional[float] = None
-    bookmark_id: Optional[str] = None
-    font_color: Optional[str] = Field(None, description="字体的颜色，使用 RRGGBB 十六进制格式。")
-    spacing_before: Optional[float] = Field(None, description="段落前的间距，单位是磅 (pt)。")
-    spacing_after: Optional[float] = Field(None, description="段落后的间距，单位是磅 (pt)。")
-    line_spacing: Optional[float] = Field(None, description="行距。例如 1.0 代表单倍行距, 1.5 代表1.5倍行距。")
-
-# --- 定义 "Run" 对象 (段落内部的组件) ---
-
-class TextRun(BaseModel):
-    type: Literal['text']
-    text: str
-
-class FootnoteRun(BaseModel):
-    type: Literal['footnote']
-    text: str
-
-class EndnoteRun(BaseModel):
-    type: Literal['endnote']
-    text: str
-
-class CrossReferenceRun(BaseModel):
-    type: Literal['cross_reference']
-    target_bookmark: str
-
-# ▼▼▼ [FIX] ▼▼▼
-# The discriminator is now correctly applied to the Union type itself using Annotated.
-AnyRun = Annotated[
-    Union[TextRun, FootnoteRun, EndnoteRun, CrossReferenceRun],
-    Field(discriminator='type')
-]
-
-
-# --- 定义顶层的 "Element" 对象 ---
+    style: Optional[str] = None; bold: Optional[bool] = None; bookmark_id: Optional[str] = None; alignment: Optional[Literal['left', 'center', 'right']] = None; font_name: Optional[str] = None; font_size: Optional[float] = None; first_line_indent: Optional[float] = None; font_color: Optional[str] = None; spacing_before: Optional[float] = None; spacing_after: Optional[float] = None; line_spacing: Optional[float] = None
+class TableProperties(BaseProperties):
+    header: Optional[bool] = None; alignments: Optional[List[str]] = None; style: Optional[str] = None; alignment: Optional[Literal['left', 'center', 'right']] = None
+class HeaderFooterProperties(BaseProperties):
+    text: str; alignment: Optional[Literal['left', 'center', 'right']] = 'center'
+class TextRun(BaseModel): type: Literal['text']; text: str
+class FootnoteRun(BaseModel): type: Literal['footnote']; text: str
+class EndnoteRun(BaseModel): type: Literal['endnote']; text: str
+class CrossReferenceRun(BaseModel): type: Literal['cross_reference']; target_bookmark: str
+class FormulaRun(BaseModel): type: Literal['formula']; text: str # The LaTeX text
+AnyRun = Annotated[Union[TextRun, FootnoteRun, EndnoteRun, CrossReferenceRun, FormulaRun], Field(discriminator='type')]
 
 class ParagraphElement(BaseModel):
     type: Literal['paragraph']
     text: Optional[str] = None
-    # The list now contains the Annotated AnyRun type
     content: Optional[List[AnyRun]] = None
     properties: Optional[ParagraphProperties] = None
 
     @model_validator(mode='after')
     def check_text_or_content(self) -> 'ParagraphElement':
         if self.text is not None and self.content is not None:
-            raise ValueError("A paragraph cannot have both 'text' and 'content'. Use 'content' for complex structures.")
+            raise ValueError("Paragraph cannot have both 'text' and 'content'.")
         return self
 
-class ListElement(BaseModel):
-    type: Literal['list']
-    items: List[str]
-    properties: Optional[Dict[str, Any]] = None
 
-class TableElement(BaseModel):
-    type: Literal['table']
-    data: List[List[str]]
-    properties: Optional[Dict[str, Any]] = None
+class NumberingLevel(BaseModel):
+    level: int = Field(..., description="The indentation level, starting from 0.")
+    number_format: Literal['decimal', 'lowerLetter', 'upperLetter', 'lowerRoman', 'upperRoman', 'chineseCounting'] = Field(..., description="The format of the number itself.")
+    text_format: str = Field(..., description="The text format string, e.g., '%1.' for level 0, '(%2)' for level 1.")
 
-class ImageElement(BaseModel):
-    type: Literal['image']
-    properties: Dict[str, Any]
-
-class FormulaElement(BaseModel):
-    type: Literal['formula']
-    properties: Dict[str, Any]
-
-class HeaderElement(BaseModel):
-    type: Literal['header']
-    properties: Dict[str, Any]
-
-class FooterElement(BaseModel):
-    type: Literal['footer']
-    properties: Dict[str, Any]
-
-class PageBreakElement(BaseModel):
-    type: Literal['page_break']
-
-class ColumnBreakElement(BaseModel):
-    type: Literal['column_break']
-
-class TocElement(BaseModel):
-    type: Literal['toc']
-    properties: Optional[Dict[str, Any]] = None
-
-# ▼▼▼ [FIX] ▼▼▼
-# Same fix as AnyRun: apply the discriminator to the Union of elements.
-AnyElement = Annotated[
-    Union[
-        ParagraphElement, ListElement, TableElement, ImageElement, FormulaElement,
-        HeaderElement, FooterElement, PageBreakElement, ColumnBreakElement, TocElement
-    ],
-    Field(discriminator='type')
-]
-
-
-# --- 定义最高层的文档结构 ---
-
+class NumberingDefinition(BaseModel):
+    name: str = Field(..., description="A unique name for this numbering scheme, e.g., 'ThesisHeadings'.")
+    style_links: Dict[str, int] = Field(..., description="A mapping of Style Name to a level index, e.g., {'Heading 1': 0, 'Heading 2': 1}.")
+    levels: List[NumberingLevel]
+class ListElement(BaseModel): type: Literal['list']; items: Optional[List[str]] = None; properties: Optional[Dict[str, Any]] = None
+class TableElement(BaseModel): type: Literal['table']; data: Optional[List[List[str]]] = None; properties: Optional[TableProperties] = None
+class ImageElement(BaseModel): type: Literal['image']; properties: Dict[str, Any]
+class FormulaElement(BaseModel): type: Literal['formula']; properties: Dict[str, Any]
+class HeaderElement(BaseModel): type: Literal['header']; properties: HeaderFooterProperties
+class FooterElement(BaseModel): type: Literal['footer']; properties: HeaderFooterProperties
+class PageBreakElement(BaseModel): type: Literal['page_break']
+class ColumnBreakElement(BaseModel): type: Literal['column_break']
+class TocElement(BaseModel): type: Literal['toc']; properties: Optional[Dict[str, Any]] = None
+AnyElement = Annotated[Union[ParagraphElement, ListElement, TableElement, ImageElement, FormulaElement, HeaderElement, FooterElement, PageBreakElement, ColumnBreakElement, TocElement], Field(discriminator='type')]
 class PageSetup(BaseModel):
-    orientation: Optional[str] = None
-    margins: Optional[Dict[str, float]] = None
-    endnote_number_format: Optional[str] = None
-    footnote_number_format: Optional[str] = None
-    endnote_reference_format: Optional[str] = None
-    footnote_reference_format: Optional[str] = None
-
-class Section(BaseModel):
-    properties: Optional[Dict[str, Any]] = None
-    # The list now correctly contains the Annotated AnyElement type
-    elements: List[AnyElement]
-
+    orientation: Optional[Literal['portrait', 'landscape']] = None; margins: Optional[Dict[str, float]] = None; endnote_number_format: Optional[str] = None; footnote_number_format: Optional[str] = None; endnote_reference_format: Optional[str] = None; footnote_reference_format: Optional[str] = None
+class Section(BaseModel): properties: Optional[Dict[str, Any]] = None; elements: List[AnyElement] = Field(default_factory=list)
+class NumberingLevel(BaseModel): level: int; number_format: Literal['decimal', 'lowerLetter', 'upperLetter', 'lowerRoman', 'upperRoman']; text_format: str
+class NumberingDefinition(BaseModel): name: str; style_links: Dict[str, int]; levels: List[NumberingLevel]
 class DocumentModel(BaseModel):
-    """这是我们期望AI返回的完整JSON结构对应的Pydantic模型"""
     page_setup: Optional[PageSetup] = None
+    numbering_definitions: Optional[List[NumberingDefinition]] = None # <-- ADDED THIS LINE
     sections: Optional[List[Section]] = None
+
+# ==============================================================================
+# SECTION 2: LOGICAL COMMAND BLOCK SCHEMA (Phase 1 Agent Output)
+# ==============================================================================
+class LogicalCommandBlock(BaseModel):
+    """
+    【已更新 v2】定义了指令规整代理的输出结构。
+    此版本使用唯一的字符串ID和基于ID的依赖关系，以降低AI的认知负荷并消除索引错误。
+    """
+    id: str = Field(..., description="一个为此块分配的简短、唯一、驼峰式的字符串ID，例如 'title' 或 'execSummary'。")
+    primary_command: str = Field(..., description="核心的创建或动作型指令。")
+    follow_up_commands: List[str] = Field(default_factory=list, description="用于修饰主指令的后续指令列表。")
+    dependencies: Optional[List[str]] = Field(
+        default_factory=list,
+        description="一个字符串列表，表示此块所依赖的其他块的ID。"
+    )
+
+class CommandBlockContainer(BaseModel):
+    """
+    用于验证指令规整代理完整JSON输出的根模型。
+    """
+    command_blocks: List[LogicalCommandBlock]
+
+# ==============================================================================
+# SECTION 3: TOOL CALLING SCHEMA (Phase 2 Agent Output)
+# ==============================================================================
+class ToolCall(BaseModel):
+    """
+    【已重构】定义了工具调用的Schema。
+    tool_name 严格与 DocumentBuilder 的方法名对齐。
+    """
+    tool_name: Literal[
+        'add_paragraph', 'add_list', 'add_table', 'update_properties',
+        'set_page_orientation', 'set_margins_cm', 'define_numbering',
+        'add_header', 'add_footer', 'add_page_break', 'add_toc', 'no_op'
+    ]
+    tool_input: Dict[str, Any]
+
+class ToolCallContainer(BaseModel):
+    """
+    用于验证工具调用代理完整JSON输出的根模型。
+    """
+    calls: List[ToolCall]

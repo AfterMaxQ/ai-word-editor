@@ -1,46 +1,57 @@
-import io
+# src/app_logic.py
 import json
-from src.ai_parser import parse_natural_language_to_json
-from src.doc_generator import create_document
-from lxml import etree
-from jsonschema import validate, ValidationError
-from src.ai_parser import parse_natural_language_to_json, polish_user_prompt_llm
+from typing import Callable, Optional
+import uuid
+
+# 【核心变更】切换回基于 ai_parser 的顺序工作流
+from .ai_parser import parse_natural_language_to_json
+from .doc_generator import create_document
 
 
-def generate_document_from_command(user_command: str) -> tuple[bytes | None, str | None, str | None]:
+async def generate_document_from_command(
+        user_command: str,
+        logger: Optional[Callable[[str], None]] = None
+) -> tuple[bytes | None, str | None, str | None]:
     """
-    接收用户指令，调用AI和文档引擎，返回Word文档、原始JSON和处理日志。
+    协调完整的文档生成流程，采用简化的顺序Agent流。
+    此版本调用 ai_parser 中的工作流，具备规划、排序、生成和自愈能力。
+
+    Args:
+        user_command (str): 用户的完整指令。
+        logger (Optional[Callable[[str], None]]): 用于流式日志记录的回调函数。
+
+    Returns:
+        tuple[bytes | None, str | None, str | None]: 文档字节流、最终JSON字符串和完整日志。
     """
-    document_data, log_str = parse_natural_language_to_json(user_command)
-    if not document_data:
-        return None, None, log_str
+    log_stream = []
 
-    log_str += "\n✅ AI生成的JSON已通过Pydantic模型验证（在生成时完成）。"
+    def log(message: str):
+        log_stream.append(message)
+        if logger:
+            logger(message)
 
-    json_str_for_display = json.dumps(
-        document_data,
-        indent=2,
-        ensure_ascii=False
+    log("🚀 AI工作流启动...")
+
+    # 【核心变更】调用新的 ai_parser.py 中的函数。
+    # 这个函数现在内部处理日志记录并通过回调流式传输。
+    parsed_json, ai_log = await parse_natural_language_to_json(
+        user_command,
+        log_callback=logger
     )
 
-    # create_document 内部逻辑不变
-    document_bytes, final_xml_body = create_document(document_data)
+    # ai_log 已经包含了所有日志，这里我们不再需要单独处理
 
-    if final_xml_body:
-        try:
-            root = etree.fromstring(final_xml_body.encode('utf-8'))
-            pretty_xml = etree.tostring(root, pretty_print=True, encoding='unicode')
-            log_str += "\n\n--- 最终生成的完整文档XML (用于诊断) ---\n" + pretty_xml
-        except Exception:
-            log_str += "\n\n--- 最终生成的完整文档XML (用于诊断) ---\n" + final_xml_body
+    if not parsed_json:
+        log("❌ AI工作流执行失败或未能生成有效文档状态，中止文档生成。")
+        return None, None, ai_log
 
-    print("\n--- 最终生成的完整文档XML (用于诊断) ---")
-    print(final_xml_body)
+    final_json_str = json.dumps(parsed_json, indent=2, ensure_ascii=False)
 
-    return document_bytes, json_str_for_display, log_str
+    log("\n" + "=" * 20 + " 5. 开始生成 DOCX 文档 " + "=" * 20)
+    docx_bytes, generator_log = await create_document(parsed_json)
+    log("✅ DOCX 文档生成完毕。")
 
-def polish_command(user_command: str) -> str | None:
-    """
-    调用AI润色用户指令。
-    """
-    return polish_user_prompt_llm(user_command)
+    # 合并AI日志和生成器日志
+    full_log = ai_log + "\n\n--- Generator Log ---\n" + (generator_log or "No generator log available.")
+
+    return docx_bytes, final_json_str, full_log

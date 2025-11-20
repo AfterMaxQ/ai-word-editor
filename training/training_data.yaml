@@ -1,0 +1,2490 @@
+
+- user_prompt: |
+    首先，这篇文档需要横向布局，所有页边距设置为2.5厘米。页脚居中显示页码，格式为“第 {PAGE_NUM} 页”。
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "landscape",
+        "margins": { "top": 2.5, "bottom": 2.5, "left": 2.5, "right": 2.5 }
+      },
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "footer",
+              "properties": { "text": "第 {PAGE_NUM} 页", "alignment": "center" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    这一整节需要设置为两栏布局。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "properties": { "columns": 2 },
+          "elements": []
+        }
+      ]
+    }
+
+- user_prompt: |
+    然后在这里插入一个分栏符。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "column_break" }
+          ]
+        }
+      ]
+    }
+
+# --- 纠错样本 4: 强化 bookmark_id 提取 ---
+- user_prompt: |
+    创建一个一级标题，内容是“引言”，并为其设置一个书签ID：“intro_section”。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "引言",
+              "properties": { "style": "Heading 1", "bookmark_id": "intro_section" }
+            }
+          ]
+        }
+      ]
+    }
+
+# --- 核心成功案例保留：强化 Law 1 ---
+- user_prompt: |
+    根据爱因斯坦的理论{footnote: 见《物理学年鉴》1905年版。}，质能关系可以表示为 $E=mc^2$，这个发现在当时是革命性的。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "根据爱因斯坦的理论" },
+                { "type": "footnote", "text": "见《物理学年鉴》1905年版。" },
+                { "type": "text", "text": "，质能关系可以表示为 ，这个发现在当时是革命性的。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "E=mc^2" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    最后，我想在这里放一个复杂的公式：
+    $$ \oint_{\partial \Omega} \mathbf{E} \cdot d\mathbf{l} = -\frac{d}{dt} \iint_{\Omega} \mathbf{B} \cdot d\mathbf{S} $$
+    这个公式后面紧跟一个无序列表。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "formula",
+              "properties": { "text": "\\oint_{\\partial \\Omega} \\mathbf{E} \\cdot d\\mathbf{l} = -\\frac{d}{dt} \\iint_{\\Omega} \\mathbf{B} \\cdot d\\mathbf{S}" }
+            },
+            {
+              "type": "list",
+              "items": [],
+              "properties": { "ordered": false }
+            }
+          ]
+        }
+      ]
+    }
+
+# --- 核心成功案例保留：强化 Law 2 ---
+- user_prompt: |
+    在第二栏的开头，创建一个三级标题“数据采集”，然后紧跟一个有序列表，内容是“准备器材”和“记录参数”。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "数据采集",
+              "properties": { "style": "Heading 3" }
+            },
+            {
+              "type": "list",
+              "items": [ "准备器材", "记录参数" ],
+              "properties": { "ordered": true }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    定义一个名为“学术标题”的标题编号方案。一级标题链接到“Heading 1”，格式为“第 %1 章”。
+  assistant_response: |
+    {
+      "numbering_definitions": [
+        {
+          "name": "学术标题",
+          "style_links": { "Heading 1": 0 },
+          "levels": [
+            { "level": 0, "number_format": "decimal", "text_format": "第 %1 章" }
+          ]
+        }
+      ]
+    }
+- user_prompt: |
+    然后插入一个分栏符。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "column_break"
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    在标题下方，插入一张图片，路径是 "assets/flowchart.png"，宽度设置为10厘米。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "image",
+              "properties": {
+                "path": "assets/flowchart.png",
+                "width": 10
+              }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    创建一个一级标题，内容是“引言”，并为其设置一个书签ID：“intro_section”。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "引言",
+              "properties": {
+                "style": "Heading 1",
+                "bookmark_id": "intro_section"
+              }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    创建一个带书签“conclusion_bm”的结论标题。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "结论",
+              "properties": {
+                "style": "Heading 1",
+                "bookmark_id": "conclusion_bm"
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "设置页面为横向，所有边距2cm。然后添加一段文字：‘根据我们的模型，当$x \\to 0$时，结果趋于稳定{footnote: 该模型已通过交叉验证}。’"
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "landscape",
+        "margins": { "top": 2.0, "bottom": 2.0, "left": 2.0, "right": 2.0 }
+      },
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "根据我们的模型，当" },
+                { "type": "text", "text": "时，结果趋于稳定" },
+                { "type": "footnote", "text": "该模型已通过交叉验证" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "x \\to 0" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "这个结论是基于一个简单的线性关系 $y=mx+c$ {footnote: 其中m是斜率，c是截距}，这一点在{cross_reference: data_analysis_section}中有详细数据支持{endnote: R平方值大于0.95}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个结论是基于一个简单的线性关系 " },
+                { "type": "footnote", "text": "其中m是斜率，c是截距" },
+                { "type": "text", "text": "，这一点在" },
+                { "type": "cross_reference", "target_bookmark": "data_analysis_section" },
+                { "type": "text", "text": "中有详细数据支持" },
+                { "type": "endnote", "text": "R平方值大于0.95" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "y=mx+c" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "首先将所有页边距设置为2.5cm。然后定义一个名为'DocumentFlow'的编号方案，一级标题为'Part %A'，二级为'%A-%1'。最后，开始第一部分，标题是'Introduction'。"
+  assistant_response: |
+    {
+      "page_setup": {
+        "margins": { "top": 2.5, "bottom": 2.5, "left": 2.5, "right": 2.5 }
+      },
+      "numbering_definitions": [
+        {
+          "name": "DocumentFlow",
+          "style_links": { "Heading 1": 0, "Heading 2": 1 },
+          "levels": [
+            { "level": 0, "number_format": "upperLetter", "text_format": "Part %1" },
+            { "level": 1, "number_format": "decimal", "text_format": "%1-%2" }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "Introduction", "properties": { "style": "Heading 1" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "系统的总能量 $E_{total}$ 是动能和势能之和{footnote: 假设没有非保守力做功}。我们将在{cross_reference: energy_conservation}中证明它是守恒的。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "系统的总能量 " },
+                { "type": "text", "text": " 是动能和势能之和" },
+                { "type": "footnote", "text": "假设没有非保守力做功" },
+                { "type": "text", "text": "。我们将在" },
+                { "type": "cross_reference", "target_bookmark": "energy_conservation" },
+                { "type": "text", "text": "中证明它是守恒的。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "E_{total}" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "将文档设为纵向，并将脚注引用格式设为上标`#`。然后添加内容：‘该物质的化学式是$H_2SO_4${footnote: 强酸，具有腐蚀性}，需小心处理。’"
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "portrait",
+        "footnote_reference_format": "#"
+      },
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "该物质的化学式是" },
+                { "type": "footnote", "text": "强酸，具有腐蚀性" },
+                { "type": "text", "text": "，需小心处理。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "H_2SO_4" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "所有投资组合的预期回报率必须满足约束条件 $R_p \\ge 5\\%${endnote: 这是一个最低要求}。这个条件{footnote: 可以在优化器中设置为约束}是强制性的。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "所有投资组合的预期回报率必须满足约束条件 " },
+                { "type": "endnote", "text": "这是一个最低要求" },
+                { "type": "text", "text": "。这个条件" },
+                { "type": "footnote", "text": "可以在优化器中设置为约束" },
+                { "type": "text", "text": "是强制性的。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "R_p \\ge 5\\%" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "请将页面方向设为横向，尾注编号格式为小写罗马数字。然后添加一个二级标题‘附录’和一段文字‘所有数据均来自官方统计{endnote: 数据截至2023年底}。’"
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "landscape",
+        "endnote_number_format": "lowerRoman"
+      },
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "附录", "properties": { "style": "Heading 2" } },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "所有数据均来自官方统计" },
+                { "type": "endnote", "text": "数据截至2023年底" },
+                { "type": "text", "text": "。" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "波的相位可以表示为 $\\phi = kx - \\omega t${footnote: 其中k是波数，w是角频率}。这个表达式{endnote: 描述了一个沿x轴正方向传播的平面波}是波动光学的基础。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "波的相位可以表示为 " },
+                { "type": "footnote", "text": "其中k是波数，w是角频率" },
+                { "type": "text", "text": "。这个表达式" },
+                { "type": "endnote", "text": "描述了一个沿x轴正方向传播的平面波" },
+                { "type": "text", "text": "是波动光学的基础。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "\\phi = kx - \\omega t" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "设置左右页边距为3cm，上下为2cm。然后插入一个段落：‘项目的关键绩效指标(KPI)是用户留存率$R > 80\\%${footnote: 按月计算}。’"
+  assistant_response: |
+    {
+      "page_setup": {
+        "margins": { "left": 3.0, "right": 3.0, "top": 2.0, "bottom": 2.0 }
+      },
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "项目的关键绩效指标(KPI)是用户留存率" },
+                { "type": "footnote", "text": "按月计算" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "R > 80\\%" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "事件A和事件B相互独立{footnote: 这是一个重要假设}，因此它们的联合概率为 $P(A \\cap B) = P(A)P(B)$。这个公式是计算复合事件概率的基础，详见{cross_reference: prob_basics}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "事件A和事件B相互独立" },
+                { "type": "footnote", "text": "这是一个重要假设" },
+                { "type": "text", "text": "，因此它们的联合概率为 。这个公式是计算复合事件概率的基础，详见" },
+                { "type": "cross_reference", "target_bookmark": "prob_basics" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "P(A \\cap B) = P(A)P(B)" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "首先，将页面设为横向。然后定义标题编号'SimpleNum'，一级标题为'Section %1'。最后，开始写第一节，标题为'Overview'。"
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "landscape"
+      },
+      "numbering_definitions": [
+        {
+          "name": "SimpleNum",
+          "style_links": { "Heading 1": 0 },
+          "levels": [
+            { "level": 0, "number_format": "decimal", "text_format": "Section %1" }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "Overview", "properties": { "style": "Heading 1" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "该算法的时间复杂度为$O(n^2)${footnote: 在最坏情况下}，这对于大规模数据集是不可接受的{endnote: 我们需要更优的算法}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "该算法的时间复杂度为" },
+                { "type": "footnote", "text": "在最坏情况下" },
+                { "type": "text", "text": "，这对于大规模数据集是不可接受的" },
+                { "type": "endnote", "text": "我们需要更优的算法" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "O(n^2)" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "设置所有页边距为2cm，并将脚注和尾注的引用格式都设为`(#)`。然后添加内容：‘结果表明$p<0.01${footnote: 显著性水平}，因此我们拒绝原假设{endnote: H0}。’"
+  assistant_response: |
+    {
+      "page_setup": {
+        "margins": { "top": 2.0, "bottom": 2.0, "left": 2.0, "right": 2.0 },
+        "footnote_reference_format": "(#)",
+        "endnote_reference_format": "(#)"
+      },
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "结果表明" },
+                { "type": "footnote", "text": "显著性水平" },
+                { "type": "text", "text": "，因此我们拒绝原假设" },
+                { "type": "endnote", "text": "H0" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "p<0.01" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "电路的谐振频率由公式 $f_0 = \\frac{1}{2\\pi\\sqrt{LC}}$ 决定{footnote: L为电感，C为电容}。这个频率点是该电路设计的关键参数，参见{cross_reference: circuit_diagram}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "电路的谐振频率由公式  决定" },
+                { "type": "footnote", "text": "L为电感，C为电容" },
+                { "type": "text", "text": "。这个频率点是该电路设计的关键参数，参见" },
+                { "type": "cross_reference", "target_bookmark": "circuit_diagram" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "f_0 = \\frac{1}{2\\pi\\sqrt{LC}}" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "首先，设置页面为纵向。然后，添加一个段落：‘根据牛顿第二定律 $F=ma${footnote: F是合外力，m是质量，a是加速度}，我们可以计算物体的运动轨迹。’"
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "portrait"
+      },
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "根据牛顿第二定律 " },
+                { "type": "footnote", "text": "F是合外力，m是质量，a是加速度" },
+                { "type": "text", "text": "，我们可以计算物体的运动轨迹。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "F=ma" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "我们需要确保信噪比 $SNR > 10dB${footnote: 这是通信质量的基本要求}。具体的计算方法已在{cross_reference: snr_calc}中给出{endnote: 测量标准为ITU-T G.114}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "我们需要确保信噪比 " },
+                { "type": "footnote", "text": "这是通信质量的基本要求" },
+                { "type": "text", "text": "。具体的计算方法已在" },
+                { "type": "cross_reference", "target_bookmark": "snr_calc" },
+                { "type": "text", "text": "中给出" },
+                { "type": "endnote", "text": "测量标准为ITU-T G.114" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "SNR > 10dB" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "设置所有边距为1.8cm，并定义一个编号方案'TechSpec'，一级为'1.'，二级为'1.1.'。然后开始写第一节‘系统要求’。"
+  assistant_response: |
+    {
+      "page_setup": {
+        "margins": { "top": 1.8, "bottom": 1.8, "left": 1.8, "right": 1.8 }
+      },
+      "numbering_definitions": [
+        {
+          "name": "TechSpec",
+          "style_links": { "Heading 1": 0, "Heading 2": 1 },
+          "levels": [
+            { "level": 0, "number_format": "decimal", "text_format": "%1." },
+            { "level": 1, "number_format": "decimal", "text_format": "%1.%2." }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "系统要求", "properties": { "style": "Heading 1" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "这个过程的产率可以用 $Yield \\approx 95\\%$ 来估计{endnote: 基于小规模实验数据}，与理论模型{footnote: 见文献[5]}的预测一致。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个过程的产率可以用 " },
+                { "type": "endnote", "text": "基于小规模实验数据" },
+                { "type": "text", "text": " 来估计，与理论模型" },
+                { "type": "footnote", "text": "见文献[5]" },
+                { "type": "text", "text": "的预测一致。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "Yield \\approx 95\\%" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "设置页面为横向，并添加一个表格。表格下方有一段文字：‘该表格总结了关键数据。误差项$\\epsilon$的分布见{cross_reference: error_dist}。’"
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "landscape"
+      },
+      "sections": [
+        {
+          "elements": [
+            { "type": "table", "data": [["ID", "Value"], ["A", "10"], ["B", "12"]] },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "该表格总结了关键数据。误差项" },
+                { "type": "text", "text": "的分布见" },
+                { "type": "cross_reference", "target_bookmark": "error_dist" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "\\epsilon" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "在段落中，我们讨论了变量$x_i$和$y_i$之间的关系{footnote: i=1, 2, ..., N}，并引用了{cross_reference: dataset_desc}中对数据集的描述。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "在段落中，我们讨论了变量" },
+                { "type": "text", "text": "和" },
+                { "type": "text", "text": "之间的关系" },
+                { "type": "footnote", "text": "i=1, 2, ..., N" },
+                { "type": "text", "text": "，并引用了" },
+                { "type": "cross_reference", "target_bookmark": "dataset_desc" },
+                { "type": "text", "text": "中对数据集的描述。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "x_i" } },
+            { "type": "formula", "properties": { "text": "y_i" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: |
+    首先，这篇文档需要横向布局，所有页边距设置为2.5厘米。页脚居中显示页码，格式为“第 {PAGE_NUM} 页”。脚注的引用标记格式是上标的方括号，像这样 "[#]"，并且编号使用大写罗马数字。尾注则使用普通的阿拉伯数字编号。
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "landscape",
+        "margins": {
+          "top": 2.5,
+          "bottom": 2.5,
+          "left": 2.5,
+          "right": 2.5
+        },
+        "footnote_number_format": "upperRoman",
+        "endnote_number_format": "decimal",
+        "footnote_reference_format": "[#]",
+        "endnote_reference_format": "#"
+      }
+    }
+- user_prompt: "研究表明{footnote: 详见 Smith et al., 2022}，该关系可以用公式 `E=mc^2` 来描述。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "研究表明" },
+                { "type": "footnote", "text": "详见 Smith et al., 2022" },
+                { "type": "text", "text": "，该关系可以用公式  来描述。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "E=mc^2" }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "所有样本的总和{endnote: 样本采集自三个不同区域}由 `\\sum_{i=1}^{n} x_i` 计算得出。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "所有样本的总和" },
+                { "type": "endnote", "text": "样本采集自三个不同区域" },
+                { "type": "text", "text": "由  计算得出。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\sum_{i=1}^{n} x_i" }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "`\\int_a^b f(x)dx` 代表了函数 f(x) 从 a 到 b 的定积分。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "formula",
+              "properties": { "text": "\\int_a^b f(x)dx" }
+            },
+            {
+              "type": "paragraph",
+              "text": " 代表了函数 f(x) 从 a 到 b 的定积分。"
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "根据{cross_reference: eq1}，我们可以推导出新的公式 `\\frac{\\partial L}{\\partial q_i} = \\frac{d}{dt}\\frac{\\partial L}{\\partial \\dot{q}_i}`。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "根据" },
+                { "type": "cross_reference", "target_bookmark": "eq1" },
+                { "type": "text", "text": "，我们可以推导出新的公式 。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": {
+                "text": "\\frac{\\partial L}{\\partial q_i} = \\frac{d}{dt}\\frac{\\partial L}{\\partial \\dot{q}_i}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "这个复杂的推导过程{footnote: 主要参考了费曼的讲义}最终得出了一个关键结果{endnote: 该结果已在实验中得到验证}，即薛定谔方程 `i\\hbar\\frac{\\partial}{\\partial t}\\Psi(\\mathbf{r},t) = \\hat{H}\\Psi(\\mathbf{r},t)`。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个复杂的推导过程" },
+                { "type": "footnote", "text": "主要参考了费曼的讲义" },
+                { "type": "text", "text": "最终得出了一个关键结果" },
+                { "type": "endnote", "text": "该结果已在实验中得到验证" },
+                { "type": "text", "text": "，即薛定谔方程 。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": {
+                "text": "i\\hbar\\frac{\\partial}{\\partial t}\\Psi(\\mathbf{r},t) = \\hat{H}\\Psi(\\mathbf{r},t)"
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "首先是勾股定理 `a^2+b^2=c^2`。\n\n接着是二次方程求根公式 `x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}`。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "首先是勾股定理 。"
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "a^2+b^2=c^2" }
+            },
+            {
+              "type": "paragraph",
+              "text": "接着是二次方程求根公式 。"
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}" }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "添加一级标题“引言”，并为其设置书签ID为 'intro'。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "引言",
+              "properties": {
+                "style": "Heading 1",
+                "bookmark_id": "intro"
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "请插入一段文字：‘重要提示’。要求使用微软雅黑字体，14磅大小，加粗，颜色为红色#FF0000，段前距12磅，段后距6磅，1.5倍行距。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "重要提示",
+              "properties": {
+                "font_name": "微软雅黑",
+                "font_size": 14,
+                "bold": true,
+                "font_color": "FF0000",
+                "spacing_before": 12,
+                "spacing_after": 6,
+                "line_spacing": 1.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "请参考图1{cross_reference: fig1}获取更多信息{footnote: 图1数据截至上季度末}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "请参考图1" },
+                { "type": "cross_reference", "target_bookmark": "fig1" },
+                { "type": "text", "text": "获取更多信息" },
+                { "type": "footnote", "text": "图1数据截至上季度末" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "创建一个三列表格，列标题分别为‘姓名’，‘年龄’，‘城市’。内容有两行：‘张三, 30, 北京’和‘李四, 25, 上海’。第一行为粗体表头，所有列居中对齐。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "table",
+              "data": [
+                ["姓名", "年龄", "城市"],
+                ["张三", "30", "北京"],
+                ["李四", "25", "上海"]
+              ],
+              "properties": {
+                "header": true,
+                "alignments": ["center", "center", "center"]
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "添加一个有序列表，内容是：\n1. 需求分析\n2. 系统设计\n3. 编码实现"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "list",
+              "items": [
+                "需求分析",
+                "系统设计",
+                "编码实现"
+              ],
+              "properties": {
+                "ordered": true
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "在文档中插入图片，路径是 'images/flowchart.png'，宽度设置为15厘米。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "image",
+              "properties": {
+                "path": "images/flowchart.png",
+                "width": 15
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "首先是二级标题“实验方法”。然后另起一段，写上：‘本次实验采用了控制变量法进行研究。’"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "实验方法",
+              "properties": { "style": "Heading 2" }
+            },
+            {
+              "type": "paragraph",
+              "text": "本次实验采用了控制变量法进行研究。"
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "首先是一段说明文字：‘计算结果如下所示：’。然后是公式 `\\eta = \\frac{P_{out}}{P_{in}} \\times 100\\%`。最后是一个表格，展示不同温度下的效率值。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "计算结果如下所示："
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\eta = \\frac{P_{out}}{P_{in}} \\times 100\\%" }
+            },
+            {
+              "type": "table",
+              "data": [
+                  ["温度 (°C)", "效率 (%)"],
+                  ["25", "92.5"],
+                  ["50", "90.1"],
+                  ["75", "88.3"]
+              ],
+              "properties": { "header": true }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "文档标题为'年度报告'。标题下方插入目录。然后分页。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "年度报告",
+              "properties": { "style": "Title" }
+            },
+            {
+              "type": "toc",
+              "properties": {}
+            },
+            {
+              "type": "page_break"
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "将文档页面设置为横向，上下页边距为2.5厘米，左右页边距为2厘米。脚注引用格式为上标数字，尾注引用格式为[i]。"
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "landscape",
+        "margins": {
+          "top": 2.5,
+          "bottom": 2.5,
+          "left": 2.0,
+          "right": 2.0
+        },
+        "footnote_number_format": "decimal",
+        "endnote_number_format": "lowerRoman",
+        "footnote_reference_format": "#",
+        "endnote_reference_format": "[#]"
+      }
+    }
+- user_prompt: "定义一套标题编号方案，名为'章节编号'。一级标题（Heading 1）格式为‘第%1章’，数字。二级标题（Heading 2）格式为‘%1.%2’，数字。"
+  assistant_response: |
+    {
+      "numbering_definitions": [
+        {
+          "name": "章节编号",
+          "style_links": {
+            "Heading 1": 0,
+            "Heading 2": 1
+          },
+          "levels": [
+            {
+              "level": 0,
+              "number_format": "decimal",
+              "text_format": "第%1章"
+            },
+            {
+              "level": 1,
+              "number_format": "decimal",
+              "text_format": "%1.%2"
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "整个文档使用纵向页面。然后添加一个一级标题，内容是‘第一部分：背景介绍’。"
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "portrait"
+      },
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "第一部分：背景介绍",
+              "properties": {
+                "style": "Heading 1"
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "文档分为两栏。第一栏内容是'这是左侧内容'，然后分栏，第二栏内容是'这是右侧内容'。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "properties": {
+            "columns": 2
+          },
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "这是左侧内容"
+            },
+            {
+              "type": "column_break"
+            },
+            {
+              "type": "paragraph",
+              "text": "这是右侧内容"
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "添加页眉，内容为‘公司内部文件’，居中对齐。添加页脚，内容为‘第 {PAGE_NUM} 页’，也是居中。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "header",
+              "properties": {
+                "text": "公司内部文件",
+                "alignment": "center"
+              }
+            },
+            {
+              "type": "footer",
+              "properties": {
+                "text": "第 {PAGE_NUM} 页",
+                "alignment": "center"
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "文档设置为A3纸张横向，所有页边距设为2cm。然后，在文档开头插入一个三级标题‘执行摘要’，内容为‘本报告总结了...’，该段文字要求首行缩进0.5cm，行距为2.0。"
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "landscape",
+        "margins": { "top": 2.0, "bottom": 2.0, "left": 2.0, "right": 2.0 }
+      },
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "执行摘要",
+              "properties": { "style": "Heading 3" }
+            },
+            {
+              "type": "paragraph",
+              "text": "本报告总结了...",
+              "properties": {
+                "first_line_indent": 0.5,
+                "line_spacing": 2.0
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "这个结论是基于亥姆霍兹自由能 `F = U - TS` 的最小化原理{footnote: 其中U是内能，T是温度，S是熵}。这个原理在{cross_reference: section_thermo}中有详细讨论{endnote: 是统计物理学的核心概念之一}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个结论是基于亥姆霍兹自由能  的最小化原理" },
+                { "type": "footnote", "text": "其中U是内能，T是温度，S是熵" },
+                { "type": "text", "text": "。这个原理在" },
+                { "type": "cross_reference", "target_bookmark": "section_thermo" },
+                { "type": "text", "text": "中有详细讨论" },
+                { "type": "endnote", "text": "是统计物理学的核心概念之一" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "F = U - TS" }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "创建一个两节的文档。第一节是单栏布局，包含一个一级标题“摘要”。从第二节开始，在新的一页上，切换到两栏布局，并且有独立的页脚，内容是‘附录部分’，居中。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "properties": { "columns": 1 },
+          "elements": [
+            { "type": "paragraph", "text": "摘要", "properties": { "style": "Heading 1" } }
+          ]
+        },
+        {
+          "properties": { "columns": 2 },
+          "elements": [
+            { "type": "page_break" },
+            { "type": "footer", "properties": { "text": "附录部分", "alignment": "center" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "请描述洛伦兹变换 `t' = \\gamma (t - \\frac{vx}{c^2})` 和 `x' = \\gamma (x - vt)`。其中变换因子 `\\gamma = \\frac{1}{\\sqrt{1 - v^2/c^2}}` 是核心{footnote: c是光速}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "请描述洛伦兹变换  和 。" },
+            { "type": "formula", "properties": { "text": "t' = \\gamma (t - \\frac{vx}{c^2})" } },
+            { "type": "formula", "properties": { "text": "x' = \\gamma (x - vt)" } },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "其中变换因子  是核心" },
+                { "type": "footnote", "text": "c是光速" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "\\gamma = \\frac{1}{\\sqrt{1 - v^2/c^2}}" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "本节介绍模型的数学基础{bookmark: math_foundations}。模型的损失函数定义为 `L(\\theta) = \\frac{1}{N} \\sum_{i=1}^N (y_i - f(x_i; \\theta))^2`。如{cross_reference: math_foundations}所述，我们的目标是最小化这个函数。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "本节介绍模型的数学基础", "properties": { "bookmark_id": "math_foundations" } },
+            { "type": "paragraph", "text": "模型的损失函数定义为 。" },
+            { "type": "formula", "properties": { "text": "L(\\theta) = \\frac{1}{N} \\sum_{i=1}^N (y_i - f(x_i; \\theta))^2" } },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "如" },
+                { "type": "cross_reference", "target_bookmark": "math_foundations" },
+                { "type": "text", "text": "所述，我们的目标是最小化这个函数。" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "创建一个表格，列出三种粒子及其自旋。第一行：电子，`1/2`。第二行：光子，`1`。第三行：希格斯玻色子，`0`。表格下方解释：‘其中自旋为半整数的为费米子{footnote: 遵循泡利不相容原理}，整数的为玻色子。’"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "table",
+              "data": [ ["粒子", "自旋"], ["电子", "1/2"], ["光子", "1"], ["希格斯玻色子", "0"] ],
+              "properties": { "header": true }
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "其中自旋为半整数的为费米子" },
+                { "type": "footnote", "text": "遵循泡利不相容原理" },
+                { "type": "text", "text": "，整数的为玻色子。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "1/2" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "定义一套名为'Thesis'的编号方案，用于毕业论文。一级标题(Heading 1)为'Chapter %1'，二级(Heading 2)为'%1.%2'，三级(Heading 3)为'%1.%2.%3'。然后立即使用该方案创建一个一级标题‘第一章 绪论’和一个二级标题‘1.1 研究背景’。"
+  assistant_response: |
+    {
+      "numbering_definitions": [
+        {
+          "name": "Thesis",
+          "style_links": { "Heading 1": 0, "Heading 2": 1, "Heading 3": 2 },
+          "levels": [
+            { "level": 0, "number_format": "decimal", "text_format": "Chapter %1" },
+            { "level": 1, "number_format": "decimal", "text_format": "%1.%2" },
+            { "level": 2, "number_format": "decimal", "text_format": "%1.%2.%3" }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "第一章 绪论", "properties": { "style": "Heading 1" } },
+            { "type": "paragraph", "text": "1.1 研究背景", "properties": { "style": "Heading 2" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "根据不确定性原理 `\\Delta x \\Delta p \\ge \\frac{\\hbar}{2}`，我们无法同时精确测量粒子的位置和动量{footnote: 这是量子力学的内禀性质}。这个原理对微观世界的描述至关重要{endnote: 由海森堡提出}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "根据不确定性原理 ，我们无法同时精确测量粒子的位置和动量" },
+                { "type": "footnote", "text": "这是量子力学的内禀性质" },
+                { "type": "text", "text": "。这个原理对微观世界的描述至关重要" },
+                { "type": "endnote", "text": "由海森堡提出" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "\\Delta x \\Delta p \\ge \\frac{\\hbar}{2}" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "在文档末尾另起一页，添加一个附录。首先是一级标题“附录 A：原始数据”。然后是一个表格，展示实验数据，表格下方有一行小字说明：‘数据采集于2023年冬季’，字体大小8磅。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "page_break" },
+            { "type": "paragraph", "text": "附录 A：原始数据", "properties": { "style": "Heading 1" } },
+            { "type": "table", "data": [ ["Sample", "Value 1", "Value 2"], ["1", "10.2", "9.8"], ["2", "11.1", "10.5"] ] },
+            { "type": "paragraph", "text": "数据采集于2023年冬季", "properties": { "font_size": 8 } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "一个理想气体的状态方程是 `PV = nRT`。当系统经历一个绝热过程时{footnote: 即没有热量交换}，它遵循 `PV^\\gamma = \\text{const}` 的关系，其中 `\\gamma` 是绝热指数。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "一个理想气体的状态方程是 。" },
+            { "type": "formula", "properties": { "text": "PV = nRT" } },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "当系统经历一个绝热过程时" },
+                { "type": "footnote", "text": "即没有热量交换" },
+                { "type": "text", "text": "，它遵循  的关系，其中 " },
+                { "type": "text", "text": " 是绝热指数。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "PV^\\gamma = \\text{const}" } },
+            { "type": "formula", "properties": { "text": "\\gamma" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "创建一个复杂的段落，内容是：‘请参考{cross_reference: table_summary}的汇总数据。这些数据{footnote: 数据已标准化}是通过对`\\sin(x)`进行积分得到的{endnote: 积分区间为[0, 2pi]}。’"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "请参考" },
+                { "type": "cross_reference", "target_bookmark": "table_summary" },
+                { "type": "text", "text": "的汇总数据。这些数据" },
+                { "type": "footnote", "text": "数据已标准化" },
+                { "type": "text", "text": "是通过对进行积分得到的" },
+                { "type": "endnote", "text": "积分区间为[0, 2pi]" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "\\sin(x)" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "文档的第一页是封面，第二页是目录，从第三页开始是正文。正文部分的页码应该从1开始。页脚格式为‘- {PAGE_NUM} -’，居中。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "封面内容", "properties": { "alignment": "center" } }
+          ]
+        },
+        {
+          "elements": [
+            { "type": "page_break" },
+            { "type": "toc", "properties": {} }
+          ]
+        },
+        {
+          "elements": [
+            { "type": "page_break" },
+            { "type": "footer", "properties": { "text": "- {PAGE_NUM} -", "alignment": "center" } },
+            { "type": "paragraph", "text": "正文开始..." }
+          ]
+        }
+      ]
+    }
+- user_prompt: "在三维空间中，一个点的坐标可以表示为 `\\mathbf{r} = x\\mathbf{i} + y\\mathbf{j} + z\\mathbf{k}`。这个表示法{footnote: 也称为向量表示法}在物理和工程中非常普遍。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "在三维空间中，一个点的坐标可以表示为 。这个表示法" },
+                { "type": "footnote", "text": "也称为向量表示法" },
+                { "type": "text", "text": "在物理和工程中非常普遍。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "\\mathbf{r} = x\\mathbf{i} + y\\mathbf{j} + z\\mathbf{k}" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "项目风险评估如下：1. 技术风险{footnote: 主要是算法收敛性问题}。2. 市场风险{endnote: 竞争对手可能提前发布同类产品}。3. 财务风险。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "项目风险评估如下："
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "技术风险" },
+                { "type": "footnote", "text": "主要是算法收敛性问题" }
+              ],
+              "properties": { "style": "List Number" }
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "市场风险" },
+                { "type": "endnote", "text": "竞争对手可能提前发布同类产品" }
+              ],
+              "properties": { "style": "List Number" }
+            },
+            {
+              "type": "paragraph",
+              "text": "财务风险",
+              "properties": { "style": "List Number" }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "设置脚注引用格式为上标方括号`[#]`，编号为小写字母。然后插入一个例子：‘这个假设{footnote: 一个未经证实的猜想}是后续推论的基础。’"
+  assistant_response: |
+    {
+      "page_setup": {
+        "footnote_reference_format": "[#]",
+        "footnote_number_format": "lowerLetter"
+      },
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个假设" },
+                { "type": "footnote", "text": "一个未经证实的猜想" },
+                { "type": "text", "text": "是后续推论的基础。" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "这个系统的哈密顿量可以写作 `H = \\frac{p^2}{2m} + \\frac{1}{2}m\\omega^2x^2`。通过正则变换{footnote: 一种保持哈密顿方程形式不变的变换}，我们可以简化求解过程。详细的变换步骤见{cross_reference: appendix_B}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "这个系统的哈密顿量可以写作 。"
+            },
+            { "type": "formula", "properties": { "text": "H = \\frac{p^2}{2m} + \\frac{1}{2}m\\omega^2x^2" } },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "通过正则变换" },
+                { "type": "footnote", "text": "一种保持哈密顿方程形式不变的变换" },
+                { "type": "text", "text": "，我们可以简化求解过程。详细的变换步骤见" },
+                { "type": "cross_reference", "target_bookmark": "appendix_B" },
+                { "type": "text", "text": "。" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "文档分为左右两栏。左栏放置公司Logo，图片路径'./assets/logo.png'。右栏是一个一级标题‘欢迎使用本产品’，其下方是一段欢迎致辞。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "properties": { "columns": 2 },
+          "elements": [
+            { "type": "image", "properties": { "path": "./assets/logo.png" } },
+            { "type": "column_break" },
+            { "type": "paragraph", "text": "欢迎使用本产品", "properties": { "style": "Heading 1" } },
+            { "type": "paragraph", "text": "我们很高兴为您介绍..." }
+          ]
+        }
+      ]
+    }
+- user_prompt: "傅里叶级数的核心思想是将周期函数展开为正弦和余弦函数的和：`f(x) = a_0 + \\sum_{n=1}^\\infty (a_n\\cos(nx) + b_n\\sin(nx))`。其中系数 `a_n` 和 `b_n` 需要通过积分计算{endnote: 这些系数称为傅里叶系数}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "text": "傅里叶级数的核心思想是将周期函数展开为正弦和余弦函数的和：。"
+            },
+            { "type": "formula", "properties": { "text": "f(x) = a_0 + \\sum_{n=1}^\\infty (a_n\\cos(nx) + b_n\\sin(nx))" } },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "其中系数 " },
+                { "type": "text", "text": " 和 " },
+                { "type": "text", "text": " 需要通过积分计算" },
+                { "type": "endnote", "text": "这些系数称为傅里叶系数" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "a_n" } },
+            { "type": "formula", "properties": { "text": "b_n" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "添加一个段落，内容为‘警告：操作存在风险。’，要求使用红色（#FF0000）的16号粗体字，并添加一个脚注{footnote: 请务必阅读安全手册}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "警告：操作存在风险。" },
+                { "type": "footnote", "text": "请务必阅读安全手册" }
+              ],
+              "properties": {
+                "font_color": "FF0000",
+                "font_size": 16,
+                "bold": true
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "请插入一个复杂的数学表达式，即高斯函数的积分：`\\int_{-\\infty}^{\\infty} e^{-ax^2} dx = \\sqrt{\\frac{\\pi}{a}}`{bookmark: gauss_int}。这个结果在概率论中非常重要{endnote: 与正态分布直接相关}，我们将在{cross_reference: gauss_int}的基础上进行后续推导。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "请插入一个复杂的数学表达式，即高斯函数的积分：", "properties": { "bookmark_id": "gauss_int" } },
+            { "type": "formula", "properties": { "text": "\\int_{-\\infty}^{\\infty} e^{-ax^2} dx = \\sqrt{\\frac{\\pi}{a}}" } },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个结果在概率论中非常重要" },
+                { "type": "endnote", "text": "与正态分布直接相关" },
+                { "type": "text", "text": "，我们将在" },
+                { "type": "cross_reference", "target_bookmark": "gauss_int" },
+                { "type": "text", "text": "的基础上进行后续推导。" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "文档设置为A4纵向，页边距全部1英寸（2.54cm）。定义一个名为'AppendixStyle'的标题方案，一级标题为'附录 %A'，二级为'%A.%1'。然后，在文档末尾另起一页，创建一个一级标题'附录 A 实验数据'，并在其下方插入一个表格{bookmark: raw_data_table}。"
+  assistant_response: |
+    {
+      "page_setup": {
+        "orientation": "portrait",
+        "margins": { "top": 2.54, "bottom": 2.54, "left": 2.54, "right": 2.54 }
+      },
+      "numbering_definitions": [
+        {
+          "name": "AppendixStyle",
+          "style_links": { "Heading 1": 0, "Heading 2": 1 },
+          "levels": [
+            { "level": 0, "number_format": "upperLetter", "text_format": "附录 %1" },
+            { "level": 1, "number_format": "decimal", "text_format": "%1.%2" }
+          ]
+        }
+      ],
+      "sections": [
+        {
+          "elements": [
+            { "type": "page_break" },
+            { "type": "paragraph", "text": "附录 A 实验数据", "properties": { "style": "Heading 1" } },
+            {
+              "type": "table",
+              "data": [ ["Time (s)", "Value"], ["0", "0.0"], ["1", "5.3"] ],
+              "properties": { "bookmark_id": "raw_data_table" }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "在一段文字中，我们需要讨论两个关键参数：`\\alpha` 和 `\\beta`。第一个参数`\\alpha`的定义见{cross_reference: def_alpha}，第二个参数`\\beta`的定义则见{footnote: 见附录B}。整个过程遵循的方程是 `\\frac{d\\alpha}{dt} = -k\\beta^2`{endnote: 这是一个二级反应动力学方程}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "在一段文字中，我们需要讨论两个关键参数： 和 。第一个参数" },
+                { "type": "text", "text": "的定义见" },
+                { "type": "cross_reference", "target_bookmark": "def_alpha" },
+                { "type": "text", "text": "，第二个参数" },
+                { "type": "text", "text": "的定义则见" },
+                { "type": "footnote", "text": "见附录B" },
+                { "type": "text", "text": "。整个过程遵循的方程是 " },
+                { "type": "endnote", "text": "这是一个二级反应动力学方程" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "\\alpha" } },
+            { "type": "formula", "properties": { "text": "\\beta" } },
+            { "type": "formula", "properties": { "text": "\\frac{d\\alpha}{dt} = -k\\beta^2" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "创建一个两节的文档。第一节的页脚是“公司机密”，右对齐。第二节从新的一页开始，页脚改为“公开信息”，居中对齐，并且正文分为两栏。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "footer", "properties": { "text": "公司机密", "alignment": "right" } },
+            { "type": "paragraph", "text": "第一节内容..." }
+          ]
+        },
+        {
+          "properties": { "columns": 2 },
+          "elements": [
+            { "type": "page_break" },
+            { "type": "footer", "properties": { "text": "公开信息", "alignment": "center" } },
+            { "type": "paragraph", "text": "第二节内容..." }
+          ]
+        }
+      ]
+    }
+- user_prompt: "请为公式 `\\oint_C \\mathbf{E} \\cdot d\\mathbf{l} = -\\frac{d\\Phi_B}{dt}` 创建一个书签，ID为'faraday_law'。然后在一个新的段落中写：‘根据{cross_reference: faraday_law}，变化的磁场会产生电场。’"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "properties": { "bookmark_id": "faraday_law" }
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\oint_C \\mathbf{E} \\cdot d\\mathbf{l} = -\\frac{d\\Phi_B}{dt}" }
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "根据" },
+                { "type": "cross_reference", "target_bookmark": "faraday_law" },
+                { "type": "text", "text": "，变化的磁场会产生电场。" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "在文档中插入一个段落，内容是：‘错误：文件未找到。’，字体设为'Courier New'，10磅，颜色为蓝色#0000FF，段前间距6磅，段后12磅。这段文字后紧跟一个尾注{endnote: 错误代码 E404}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "错误：文件未找到。" },
+                { "type": "endnote", "text": "错误代码 E404" }
+              ],
+              "properties": {
+                "font_name": "Courier New",
+                "font_size": 10,
+                "font_color": "0000FF",
+                "spacing_before": 6,
+                "spacing_after": 12
+              }
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "本节介绍两个关键概念：首先是“熵”{footnote: 描述系统的混乱程度}，其次是“焓”{endnote: 描述系统的内能和压力的乘积之和}。它们的数学关系由吉布斯自由能 `G = H - TS` 描述。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "本节介绍两个关键概念：首先是“熵”" },
+                { "type": "footnote", "text": "描述系统的混乱程度" },
+                { "type": "text", "text": "，其次是“焓”" },
+                { "type": "endnote", "text": "描述系统的内能和压力的乘积之和" },
+                { "type": "text", "text": "。它们的数学关系由吉布斯自由能  描述。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "G = H - TS" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "创建一个三列表格，内容是不同编程语言的发布年份。表头是‘语言’，‘年份’，‘创始人’。内容是'Python, 1991, Guido van Rossum'和'Java, 1995, James Gosling'。表格下方，插入一个脚注{footnote: 数据来源维基百科}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "table",
+              "data": [ ["语言", "年份", "创始人"], ["Python", "1991", "Guido van Rossum"], ["Java", "1995", "James Gosling"] ],
+              "properties": { "header": true }
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "footnote", "text": "数据来源维基百科" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+- user_prompt: "添加一个段落，里面有多种格式：‘这段文字包含普通文本，**粗体文本**，以及一个公式 `\\lambda = h/p`。’"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这段文字包含普通文本，" },
+                { "type": "text", "text": "粗体文本", "properties": { "bold": true } },
+                { "type": "text", "text": "，以及一个公式 。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "\\lambda = h/p" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "在文档中，我们首先引用了{cross_reference: fig_1}，然后解释了其原理{footnote: 基于多普勒效应}，最后给出了数学模型`f' = f (\\frac{c+v_r}{c+v_s})`{endnote: 适用于声波和电磁波}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "在文档中，我们首先引用了" },
+                { "type": "cross_reference", "target_bookmark": "fig_1" },
+                { "type": "text", "text": "，然后解释了其原理" },
+                { "type": "footnote", "text": "基于多普勒效应" },
+                { "type": "text", "text": "，最后给出了数学模型" },
+                { "type": "endnote", "text": "适用于声波和电磁波" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "f' = f (\\frac{c+v_r}{c+v_s})" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "插入一个有序列表，包含三个步骤。第一步是‘收集数据’。第二步是‘分析数据’，这一步有一个脚注{footnote: 使用SPSS软件}。第三步是‘得出结论’。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "收集数据", "properties": { "style": "List Number" } },
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "分析数据" },
+                { "type": "footnote", "text": "使用SPSS软件" }
+              ],
+              "properties": { "style": "List Number" }
+            },
+            { "type": "paragraph", "text": "得出结论", "properties": { "style": "List Number" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "文档的第一节是封面，使用单栏布局。第二节开始，在新的一页，使用两栏布局，并且有页眉‘项目报告’和页脚‘第 {PAGE_NUM} 页’。第二节的第一个元素是一个二级标题‘1. 引言’。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "properties": { "columns": 1 },
+          "elements": [
+            { "type": "paragraph", "text": "封面", "properties": { "style": "Title", "alignment": "center" } }
+          ]
+        },
+        {
+          "properties": { "columns": 2 },
+          "elements": [
+            { "type": "page_break" },
+            { "type": "header", "properties": { "text": "项目报告" } },
+            { "type": "footer", "properties": { "text": "第 {PAGE_NUM} 页" } },
+            { "type": "paragraph", "text": "1. 引言", "properties": { "style": "Heading 2" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "在量子场论中，路径积分的表达式为 `Z = \\int \\mathcal{D}\\phi \\, e^{iS[\\phi]/\\hbar}`。这个表达式{footnote: 由费曼提出}是该理论的基石{endnote: 用于计算跃迁振幅}。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "在量子场论中，路径积分的表达式为 。这个表达式" },
+                { "type": "footnote", "text": "由费曼提出" },
+                { "type": "text", "text": "是该理论的基石" },
+                { "type": "endnote", "text": "用于计算跃迁振幅" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "Z = \\int \\mathcal{D}\\phi \\, e^{iS[\\phi]/\\hbar}" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "请插入一个居中的一级标题‘最终结论’。然后是一个首行缩进1cm的段落，内容是：‘综上所述，我们的假设成立。’"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "最终结论", "properties": { "style": "Heading 1", "alignment": "center" } },
+            { "type": "paragraph", "text": "综上所述，我们的假设成立。", "properties": { "first_line_indent": 1.0 } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "这个证明涉及到一个关键的矩阵行列式 `\\det(\\mathbf{A} - \\lambda\\mathbf{I}) = 0`，用于求解本征值。这个方程{footnote: 称为特征方程}的解 `\\lambda` 就是系统的本征值。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个证明涉及到一个关键的矩阵行列式 ，用于求解本征值。这个方程" },
+                { "type": "footnote", "text": "称为特征方程" },
+                { "type": "text", "text": "的解  就是系统的本征值。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "\\det(\\mathbf{A} - \\lambda\\mathbf{I}) = 0" } },
+            { "type": "formula", "properties": { "text": "\\lambda" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "创建一个两行文字。第一行是‘主标题’，设为二级标题。第二行是‘副标题’，设为三级标题。然后是一个分页符。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            { "type": "paragraph", "text": "主标题", "properties": { "style": "Heading 2" } },
+            { "type": "paragraph", "text": "副标题", "properties": { "style": "Heading 3" } },
+            { "type": "page_break" }
+          ]
+        }
+      ]
+    }
+- user_prompt: "在一段文字中，我们需要引用欧拉公式 `e^{ix} = \\cos x + i\\sin x`。这个公式{footnote: 连接了五个最重要的数学常数}在复分析中无处不在，正如我们在{cross_reference: chapter3}中看到的那样。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "在一段文字中，我们需要引用欧拉公式 。这个公式" },
+                { "type": "footnote", "text": "连接了五个最重要的数学常数" },
+                { "type": "text", "text": "在复分析中无处不在，正如我们在" },
+                { "type": "cross_reference", "target_bookmark": "chapter3" },
+                { "type": "text", "text": "中看到的那样。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "e^{ix} = \\cos x + i\\sin x" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "文档正文内容需要分为两栏。左栏是一个无序列表：'优点'和'缺点'。然后强制分栏。右栏是一张图片，路径'analysis.jpg'，宽度8cm。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "properties": { "columns": 2 },
+          "elements": [
+            { "type": "list", "items": ["优点", "缺点"], "properties": { "ordered": false } },
+            { "type": "column_break" },
+            { "type": "image", "properties": { "path": "analysis.jpg", "width": 8 } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "我们考虑一个柯西-洛伦兹分布，其概率密度函数为 `f(x; x_0, \\gamma) = \\frac{1}{\\pi\\gamma} \\left[ \\frac{\\gamma^2}{(x-x_0)^2+\\gamma^2} \\right]`。这个分布{endnote: 也称为布莱特-维格纳分布}在物理学中很常见。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "我们考虑一个柯西-洛伦兹分布，其概率密度函数为 。这个分布" },
+                { "type": "endnote", "text": "也称为布莱特-维格纳分布" },
+                { "type": "text", "text": "在物理学中很常见。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "f(x; x_0, \\gamma) = \\frac{1}{\\pi\\gamma} \\left[ \\frac{\\gamma^2}{(x-x_0)^2+\\gamma^2} \\right]" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "创建一个段落，内容是：‘请注意{footnote: 这是一个重要提示}：所有操作必须在`t=0`时刻之前完成。’其中`t=0`是一个公式。"
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "请注意" },
+                { "type": "footnote", "text": "这是一个重要提示" },
+                { "type": "text", "text": "：所有操作必须在时刻之前完成。" }
+              ]
+            },
+            { "type": "formula", "properties": { "text": "t=0" } }
+          ]
+        }
+      ]
+    }
+- user_prompt: "设置尾注引用格式为上标罗马数字`Ⅰ, Ⅱ, ...`，格式为`(#)`。然后插入一个例子：‘这个结论是初步的{endnote: 需要更多实验数据支持}。’"
+  assistant_response: |
+    {
+      "page_setup": {
+        "endnote_reference_format": "(#)",
+        "endnote_number_format": "upperRoman"
+      },
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个结论是初步的" },
+                { "type": "endnote", "text": "需要更多实验数据支持" },
+                { "type": "text", "text": "。" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+# training/training_data.yaml (将这些样本添加到文件末尾)
+
+# --- 饱和式攻击训练集：专攻混合语法中的行内公式 ---
+
+- user_prompt: |
+    根据爱因斯坦的理论{footnote: 见《物理学年鉴》1905年版。}，质能关系可以表示为 $E=mc^2$，这个发现在当时是革命性的。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "根据爱因斯坦的理论" },
+                { "type": "footnote", "text": "见《物理学年鉴》1905年版。" },
+                { "type": "text", "text": "，质能关系可以表示为 ，这个发现在当时是革命性的。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "E=mc^2" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    系统的总能量 $H$ 是动能与势能之和。这个原理{endnote: 详见经典力学教材附录B。}是分析的基础。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "系统的总能量  是动能与势能之和。这个原理" },
+                { "type": "endnote", "text": "详见经典力学教材附录B。" },
+                { "type": "text", "text": "是分析的基础。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "H" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    如我们在{cross_reference: chapter_1}中提到的，理想气体状态方程为 $PV=nRT$。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "如我们在" },
+                { "type": "cross_reference", "target_bookmark": "chapter_1" },
+                { "type": "text", "text": "中提到的，理想气体状态方程为 。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "PV=nRT" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    当阻尼系数 $\zeta > 1$ 时，系统处于过阻尼状态{footnote: 此时系统不会发生振荡。}。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "当阻尼系数  时，系统处于过阻尼状态" },
+                { "type": "footnote", "text": "此时系统不会发生振荡。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\zeta > 1" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    这个积分 $\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$ 的结果非常重要{footnote: 这是高斯积分的一个著名实例。}，我们将在后续章节反复使用。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个积分  的结果非常重要" },
+                { "type": "footnote", "text": "这是高斯积分的一个著名实例。" },
+                { "type": "text", "text": "，我们将在后续章节反复使用。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    首先，我们假设一个初始条件 $x(0)=x_0${footnote: 初始位移}。然后，我们考虑另一个条件 $v(0)=v_0${footnote: 初始速度}。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "首先，我们假设一个初始条件 " },
+                { "type": "footnote", "text": "初始位移" },
+                { "type": "text", "text": "。然后，我们考虑另一个条件 " },
+                { "type": "footnote", "text": "初始速度" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "x(0)=x_0" }
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "v(0)=v_0" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    欧拉公式 $e^{i\pi} + 1 = 0$ 将五个最重要的数学常数联系在一起{endnote: 这五个常数是 0, 1, e, i, 和 pi。}。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "欧拉公式  将五个最重要的数学常数联系在一起" },
+                { "type": "endnote", "text": "这五个常数是 0, 1, e, i, 和 pi。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "e^{i\\pi} + 1 = 0" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    我们定义一个集合 $S = \{x \in \mathbb{R} | x > 0\}${footnote: S是所有正实数的集合}。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "我们定义一个集合 " },
+                { "type": "footnote", "text": "S是所有正实数的集合" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "S = \\{x \\in \\mathbb{R} | x > 0\\}" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    傅里叶变换{footnote: 用于信号处理}的核心是积分 $\mathcal{F}\{f(t)\} = \int_{-\infty}^{\infty} f(t) e^{-i\omega t} dt$。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "傅里叶变换" },
+                { "type": "footnote", "text": "用于信号处理" },
+                { "type": "text", "text": "的核心是积分 。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\mathcal{F}\\{f(t)\\} = \\int_{-\\infty}^{\\infty} f(t) e^{-i\\omega t} dt" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    正如{cross_reference: theory_section}中讨论的，当 $v \ll c$ 时，洛伦兹变换近似于伽利略变换。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "正如" },
+                { "type": "cross_reference", "target_bookmark": "theory_section" },
+                { "type": "text", "text": "中讨论的，当  时，洛伦兹变换近似于伽利略变换。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "v \\ll c" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    一个关键的假设是概率之和为1，即 $\sum_{i=1}^n P(x_i) = 1${footnote: 这是概率论的基本公理}。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "一个关键的假设是概率之和为1，即 " },
+                { "type": "footnote", "text": "这是概率论的基本公理" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\sum_{i=1}^n P(x_i) = 1" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    请注意，梯度 $\nabla f$ 指向函数增长最快的方向{endnote: 在多元微积分中有详细定义}。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "请注意，梯度  指向函数增长最快的方向" },
+                { "type": "endnote", "text": "在多元微积分中有详细定义" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\nabla f" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    勾股定理 $a^2+b^2=c^2$ 是一个基础。同时，我们还知道正弦定理{footnote: $\frac{a}{\sin A} = \frac{b}{\sin B} = \frac{c}{\sin C}$}。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "勾股定理  是一个基础。同时，我们还知道正弦定理" },
+                { "type": "footnote", "text": "$\\frac{a}{\\sin A} = \\frac{b}{\\sin B} = \\frac{c}{\\sin C}$" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "a^2+b^2=c^2" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    根据牛顿第二定律{footnote: 由艾萨克·牛顿提出}，力、质量和加速度的关系是 $\mathbf{F}=m\mathbf{a}$。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "根据牛顿第二定律" },
+                { "type": "footnote", "text": "由艾萨克·牛顿提出" },
+                { "type": "text", "text": "，力、质量和加速度的关系是 。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\mathbf{F}=m\\mathbf{a}" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    误差函数定义为 $\mathrm{erf}(x) = \frac{2}{\sqrt{\pi}} \int_0^x e^{-t^2} dt${endnote: 它在统计学中很常见}。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "误差函数定义为 " },
+                { "type": "endnote", "text": "它在统计学中很常见" },
+                { "type": "text", "text": "。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\mathrm{erf}(x) = \\frac{2}{\\sqrt{\\pi}} \\int_0^x e^{-t^2} dt" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    正如{cross_reference: assumptions}中列出的，我们假设 $\alpha$ 和 $\beta$ 是小角度。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "正如" },
+                { "type": "cross_reference", "target_bookmark": "assumptions" },
+                { "type": "text", "text": "中列出的，我们假设  和  是小角度。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\alpha" }
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\beta" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    这个极限{footnote: 洛必达法则适用} $\lim_{x \to 0} \frac{\sin x}{x} = 1$ 是微积分中的一个重要结论。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个极限" },
+                { "type": "footnote", "text": "洛必达法则适用" },
+                { "type": "text", "text": "  是微积分中的一个重要结论。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    矩阵 $A$ 的行列式{footnote: 表示为 $\det(A)$ 或 $|A|$}不为零时，该矩阵可逆。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "矩阵  的行列式" },
+                { "type": "footnote", "text": "表示为 $\\det(A)$ 或 $|A|$" },
+                { "type": "text", "text": "不为零时，该矩阵可逆。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "A" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    最终，我们得到了波动方程 $\frac{\partial^2 u}{\partial t^2} = c^2 \frac{\partial^2 u}{\partial x^2}$，这是一个关键结果{endnote: 更多推导见附录}。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "最终，我们得到了波动方程 ，这是一个关键结果" },
+                { "type": "endnote", "text": "更多推导见附录" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\frac{\\partial^2 u}{\\partial t^2} = c^2 \\frac{\\partial^2 u}{\\partial x^2}" }
+            }
+          ]
+        }
+      ]
+    }
+
+- user_prompt: |
+    这个向量 $\vec{v}$ 的模长{footnote: 也就是它的长度}由 $|\vec{v}|$ 表示。
+  assistant_response: |
+    {
+      "sections": [
+        {
+          "elements": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "type": "text", "text": "这个向量  的模长" },
+                { "type": "footnote", "text": "也就是它的长度" },
+                { "type": "text", "text": "由  表示。" }
+              ]
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "\\vec{v}" }
+            },
+            {
+              "type": "formula",
+              "properties": { "text": "|\\vec{v}|" }
+            }
+          ]
+        }
+      ]
+    }

@@ -1,0 +1,4 @@
+models:
+  planner: "qwen2.5-coder:14b"
+  generator: "qwen2.5-coder:14b"
+  corrector: "qwen2.5-coder:14b"
