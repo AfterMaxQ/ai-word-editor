@@ -13,18 +13,20 @@ from docx.text.paragraph import Paragraph
 def _parse_paragraph(p: Paragraph) -> Dict[str, Any]:
     """
     Parses a python-docx Paragraph object into our standard ParagraphElement dictionary.
-
-    Args:
-        p (Paragraph): The paragraph object to parse.
-
-    Returns:
-        Dict[str, Any]: A dictionary conforming to the ParagraphElement schema.
     """
     properties = {}
+
+    # 获取段落样式
+    # p.style.name 通常返回 UI显示的名称 (如 "Heading 1")
     if p.style and p.style.name and p.style.name != 'Normal':
         properties['style'] = p.style.name
 
-    # NOTE: More detailed property parsing can be added here.
+    # (可选) 提取对齐方式
+    if p.alignment:
+        # python-docx alignment 枚举转字符串
+        align_map = {0: 'left', 1: 'center', 2: 'right', 3: 'justify'}
+        if p.alignment in align_map:
+            properties['alignment'] = align_map[p.alignment]
 
     return {
         "type": "paragraph",

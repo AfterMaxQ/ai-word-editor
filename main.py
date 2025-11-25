@@ -277,13 +277,18 @@ async def parse_document_endpoint(file: UploadFile = File(...)):
     接收 .docx 文件，解析为 JSON 结构并返回。
     主要用于前端导入现有文档内容到编辑器中。
     """
+    # 简单的文件类型校验
     if not file.filename.endswith('.docx'):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a .docx file.")
 
     try:
+        # 读取文件字节流
         docx_bytes = await file.read()
-        # 使用 doc_parser 解析文档结构
+
+        # 调用核心解析逻辑
         doc_state = parse_docx_to_json(docx_bytes)
+
+        # 返回标准中间态 JSON (IR)
         return doc_state
     except Exception as e:
         import traceback
